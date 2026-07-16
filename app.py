@@ -1,4 +1,16 @@
 from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+import os
+def configure():
+      api_key = os.getenv("api_key")
+
+      if not api_key:
+          raise RuntimeError("api_key is missing from the .env file")
+
+      return api_key
+
+
+api_key = configure()
 
 app = Flask(__name__)
 
@@ -13,3 +25,6 @@ def check_url():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+def main():
+    configure()
