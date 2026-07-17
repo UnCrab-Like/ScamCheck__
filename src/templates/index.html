@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>ScamCheck</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workbench" aria-labelledby="app-title">
+        <div class="intro">
+          <p class="eyebrow">ScamCheck</p>
+          <h1 id="app-title">Thám tử kiểm tra tin nhắn</h1>
+        </div>
+
+        <form id="check-form" class="input-panel">
+          <label for="message-input">Nội dung tin nhắn</label>
+          <textarea id="message-input" name="input_text" rows="9" minlength="8" maxlength="5000" required placeholder="Dán nguyên văn tin nhắn, email hoặc nội dung nghi ngờ vào đây."></textarea>
+          <div class="counter-row">
+            <span id="char-count">0/5000 ký tự</span>
+            <span id="usage-count">0/10 lượt AI</span>
+          </div>
+
+          <div class="sample-grid" aria-label="Tin mẫu">
+            <button type="button" class="secondary sample-btn" data-sample="prize">Tin trúng thưởng</button>
+            <button type="button" class="secondary sample-btn" data-sample="bank">Tin ngân hàng</button>
+            <button type="button" class="secondary sample-btn" data-sample="delivery">Tin giao hàng</button>
+          </div>
+
+          <div class="actions-row">
+            <button type="button" id="voice-toggle" class="secondary">Bật đọc giọng nói</button>
+            <button type="button" id="library-open" class="secondary">Thư viện lừa đảo</button>
+            <button type="button" id="practice-open" class="secondary">Luyện tập 10 câu</button>
+            <button type="button" id="contrast-toggle" class="secondary">Tương phản cao</button>
+            <button type="button" id="font-toggle" class="secondary">Phóng chữ</button>
+            <button type="submit" id="check-button" class="primary">Kiểm tra</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="status-panel" class="status-panel hidden" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Đang phân tích bằng Gemini...</p>
+      </section>
+
+      <section id="result-panel" class="result-panel hidden" aria-live="polite">
+        <h2>Kết quả Thám tử</h2>
+        <div id="risk-card" class="risk-card">Nghi ngờ</div>
+        <p id="summary" class="summary"></p>
+
+        <h2>Dấu hiệu</h2>
+        <ul id="indicator-list" class="indicator-list"></ul>
+
+        <h2>Tin gốc đã tô trích dẫn</h2>
+        <div id="highlighted-message" class="highlighted-message"></div>
+
+        <h2>Hành động khuyến nghị</h2>
+        <ol id="action-list" class="action-list"></ol>
+
+        <div id="psychology-panel" class="psychology-panel hidden">
+          <h2>Cô tâm lý</h2>
+          <p id="psychology-text"></p>
+        </div>
+
+        <div id="situation-panel" class="situation-panel hidden">
+          <h2>Bác đã làm gì rồi?</h2>
+          <div class="situation-grid">
+            <button type="button" class="secondary" data-situation="clicked_link">Mới bấm link/mở tệp</button>
+            <button type="button" class="secondary" data-situation="shared_info">Đã nhập thông tin/OTP</button>
+            <button type="button" class="secondary" data-situation="sent_money">Đã chuyển tiền</button>
+            <button type="button" class="secondary" data-situation="installed_app">Đã cài app lạ</button>
+          </div>
+        </div>
+
+        <div id="responder-panel" class="responder-panel hidden">
+          <h2>Người ứng cứu</h2>
+          <ol id="responder-steps" class="action-list"></ol>
+        </div>
+
+        <div class="actions-row">
+          <button type="button" id="share-card-button" class="secondary">Tải ảnh tóm tắt</button>
+        </div>
+      </section>
+
+      <section id="library-panel" class="library-panel hidden" aria-labelledby="library-title">
+        <div class="section-heading">
+          <h2 id="library-title">Thư viện kiểu lừa đảo</h2>
+          <button type="button" id="library-close" class="secondary">Quay lại kiểm tra</button>
+        </div>
+        <div id="library-filters" class="library-filters" aria-label="Lọc nhóm lừa đảo"></div>
+        <div id="library-list" class="library-list"></div>
+        <article id="library-detail" class="library-detail hidden"></article>
+      </section>
+
+      <section id="practice-panel" class="practice-panel hidden" aria-labelledby="practice-title">
+        <div class="section-heading">
+          <h2 id="practice-title">Luyện tập 10 câu</h2>
+          <button type="button" id="practice-close" class="secondary">Quay lại kiểm tra</button>
+        </div>
+        <div class="practice-card">
+          <div id="practice-progress" class="history-meta">Câu 1/10</div>
+          <p id="practice-text"></p>
+          <div class="actions-row">
+            <button type="button" class="secondary" data-practice-answer="An toàn">An toàn</button>
+            <button type="button" class="secondary danger" data-practice-answer="Lừa đảo">Lừa đảo</button>
+          </div>
+          <p id="practice-feedback" class="practice-feedback"></p>
+          <button type="button" id="practice-next" class="primary hidden">Câu tiếp theo</button>
+        </div>
+        <div id="practice-summary" class="practice-summary hidden"></div>
+      </section>
+
+      <section class="history-panel">
+        <div class="section-heading">
+          <h2>Lịch sử 10 tin gần nhất</h2>
+          <button type="button" id="clear-history" class="secondary danger">Xóa toàn bộ</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+      </section>
+
+      <section class="log-panel">
+        <h2>Nhật ký gọi AI trong phiên</h2>
+        <div id="call-log" class="call-log"></div>
+      </section>
+
+      <section class="a11y-panel">
+        <h2>Tự kiểm chuẩn AA</h2>
+        <ul>
+          <li>Đạt: cỡ chữ nội dung tối thiểu 18px.</li>
+          <li>Đạt: màu chữ và nền có tương phản AA cho trạng thái chính.</li>
+          <li>Đạt: bố cục một cột không vỡ trên iPhone.</li>
+          <li>Đạt: nút có nhãn rõ và vùng chạm tối thiểu 44px.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="legal-footer">
+      ScamCheck chỉ hỗ trợ tham khảo, không thay thế tư vấn pháp lý, tài chính hoặc quyết định của cơ quan chức năng.
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  </body>
+</html>

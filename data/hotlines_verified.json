@@ -1,0 +1,111 @@
+{
+  "last_verified": "2026-07-17",
+  "country": "VN",
+  "sources_note": "Only numbers listed here may be shown in responder output.",
+  "contacts": [
+    {
+      "id": "police_113",
+      "type": "police",
+      "name": "Cảnh sát 113",
+      "phone": "113",
+      "purpose": "Hỗ trợ khẩn cấp về an ninh, trật tự.",
+      "source_url": "https://www.mps.gov.vn/bai-viet/phong-canh-sat-quan-ly-hanh-chinh-ve-trat-tu-xa-hoi-phoi-hop-voi-benh-vien-da-khoa-an-thi-nang-cao-hieu-qua-cong-tac-bao-dam-an-ninh-trat-tu-1779766890"
+    },
+    {
+      "id": "ais_156",
+      "type": "information_security",
+      "name": "Tổng đài 156",
+      "phone": "156",
+      "purpose": "Phản ánh lừa đảo, tin nhắn rác, cuộc gọi rác.",
+      "source_url": "https://nospam.vncert.vn/"
+    },
+    {
+      "id": "ais_5656",
+      "type": "information_security",
+      "name": "Đầu số 5656",
+      "phone": "5656",
+      "purpose": "Nhắn tin phản ánh lừa đảo/tin nhắn rác/cuộc gọi rác.",
+      "source_url": "https://nospam.vncert.vn/"
+    },
+    {
+      "id": "vietcombank",
+      "type": "bank",
+      "name": "Vietcombank",
+      "phone": "1900545413",
+      "purpose": "Khóa dịch vụ/thẻ và hỗ trợ nghi ngờ gian lận.",
+      "source_url": "https://www.vietcombank.com.vn/vi-VN/KHCN/SPDV/Ngan-hang-so/Phone-banking"
+    },
+    {
+      "id": "bidv",
+      "type": "bank",
+      "name": "BIDV",
+      "phone": "19009247",
+      "purpose": "Chăm sóc khách hàng 24/7 và báo nghi ngờ lừa đảo.",
+      "source_url": "https://bidv.com.vn/bidv_en/tin-tuc/tin-ve-bidv/canh-bao-lua-dao-gia-mao-ngan-hang-de-chiem-doat-tai-san"
+    },
+    {
+      "id": "vietinbank",
+      "type": "bank",
+      "name": "VietinBank",
+      "phone": "1900558868",
+      "purpose": "Hotline chung trong nước.",
+      "source_url": "https://contact.vietinbank.vn/"
+    },
+    {
+      "id": "agribank",
+      "type": "bank",
+      "name": "Agribank",
+      "phone": "1900558818",
+      "purpose": "Trung tâm chăm sóc và hỗ trợ khách hàng.",
+      "source_url": "https://www.agribank.com.vn/vn/lien-he"
+    },
+    {
+      "id": "techcombank",
+      "type": "bank",
+      "name": "Techcombank",
+      "phone": "1800588822",
+      "purpose": "Contact Center cá nhân 24/7.",
+      "source_url": "https://techcombank.com/en/information/updates/techcombank-warning-on-bank-impersonation-scam-email-messages"
+    },
+    {
+      "id": "mbbank",
+      "type": "bank",
+      "name": "MB Bank",
+      "phone": "1900545426",
+      "purpose": "Trung tâm dịch vụ khách hàng 24/7.",
+      "source_url": "https://www.mbbank.com.vn/Support?lang=EN"
+    },
+    {
+      "id": "vpbank",
+      "type": "bank",
+      "name": "VPBank",
+      "phone": "1900545415",
+      "purpose": "Hotline khách hàng cá nhân.",
+      "source_url": "https://cskh.vpbank.com.vn/contact"
+    },
+    {
+      "id": "acb",
+      "type": "bank",
+      "name": "ACB",
+      "phone": "1900545486",
+      "purpose": "Contact Center 24/7.",
+      "source_url": "https://acb.com.vn/en/face-authentication"
+    },
+    {
+      "id": "sacombank",
+      "type": "bank",
+      "name": "Sacombank",
+      "phone": "1800585888",
+      "purpose": "Hotline 24/7.",
+      "source_url": "https://www.sacombank.com.vn/en/home/news/sacombank-news/Sacombank-stops-using-Hotline-1900-5555-88-from-01-05-2023.html"
+    },
+    {
+      "id": "tpbank",
+      "type": "bank",
+      "name": "TPBank",
+      "phone": "1900585885",
+      "purpose": "Dịch vụ hỗ trợ khách hàng.",
+      "source_url": "https://tpb.vn/wps/portal/vni/faqs/ngan-hang-ca-nhan"
+    }
+  ]
+}
