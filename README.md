@@ -38,7 +38,7 @@ Fill `.env` with your real values:
 
 ```bash
 GEMINI_API_KEY=your_real_key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.5-flash
 FLASK_SECRET_KEY=replace_with_a_random_secret
 PORT=5000
 PUBLIC_PRODUCT_URL=https://your-public-scamcheck-url.example
@@ -91,6 +91,16 @@ Data files:
 
 The report prints before/after accuracy, coverage, a confusion matrix, and at least three concrete weaknesses.
 
+To collect evidence from the real Gemini model, including schema reliability, latency, accuracy, and dangerous downgrades:
+
+```bash
+python scripts/evaluate_live_gemini.py --limit 10
+# Full labeled evaluation (uses 60 Gemini calls):
+python scripts/evaluate_live_gemini.py --limit 60
+```
+
+This command requires `GEMINI_API_KEY` and intentionally never prints the key.
+
 ## Responder Operations
 
 Responder safety documentation is in `docs/operations_safety.md`.
@@ -114,6 +124,18 @@ For a public demo, deploy the Flask app to a Python host such as Render, Railway
 - `PORT`
 
 If the mentor specifically requires GitHub Pages from the main branch, publish only a static landing/proxy page there and keep Gemini calls on a backend service. In GitHub: Settings -> Pages -> Build and deployment -> Deploy from branch -> `main`.
+
+### Render deployment for phone and desktop
+
+The included `render.yaml` runs the Flask backend with Gunicorn and exposes `/health` for hosting checks.
+
+1. Push the clean `main` branch to GitHub.
+2. In Render, choose **New → Blueprint** and select this repository.
+3. Enter `GEMINI_API_KEY` and the final public address as `PUBLIC_PRODUCT_URL`.
+4. Deploy, then open the HTTPS address on iPhone Safari and a desktop browser.
+5. Allow microphone access when testing voice input. Safari uses recorded audio transcription when browser speech recognition is unavailable.
+
+Do not use a Pages-only deployment for the checker: it would either expose the Gemini key or omit the Python safety layer.
 
 ## Legal Notice
 

@@ -1,33 +1,21 @@
-<<<<<<< Updated upstream
-from flask import Flask, request, jsonify
-from dotenv import load_dotenv
-import os
-def configure():
-      api_key = os.getenv("api_key")
-
-      if not api_key:
-          raise RuntimeError("api_key is missing from the .env file")
-
-      return api_key
-
-
-api_key = configure()
-=======
 import asyncio
+import base64
 import hashlib
 import json
 import os
 import re
+import queue
+import threading
 import time
 import urllib.error
 from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
 from urllib.parse import urlparse
->>>>>>> Stashed changes
 
 import requests
-from flask import Flask, jsonify, render_template, request, send_file, session
+import httpx
+from flask import Flask, jsonify, render_template, request, send_file, session, stream_with_context
 
 
 def load_local_env() -> None:
@@ -42,13 +30,6 @@ def load_local_env() -> None:
             key, value = line.split("=", 1)
             os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
-<<<<<<< Updated upstream
-if __name__ == '__main__':
-    app.run(debug=True)
-
-def main():
-    configure()
-=======
 
 load_local_env()
 
@@ -61,6 +42,10 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
+)
+GEMINI_STREAM_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    f"{GEMINI_MODEL}:streamGenerateContent?alt=sse"
 )
 RESULT_CACHE_LIMIT = 20
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?84[-.\s]?)?(?:0?\d[-.\s]?){2,12}\d(?!\d)")
@@ -823,6 +808,8 @@ async def call_gemini_json(
     parser,
     deadline: float,
     max_retries: int = 2,
+    on_chunk=None,
+    sleep_func=None,
 ) -> dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
@@ -848,7 +835,11 @@ async def call_gemini_json(
             raise TimeoutError("Hết ngân sách thời gian gọi AI.")
         attempt_timeout = min(AI_TIMEOUT_SECONDS, remaining)
         try:
-            return post_json(GEMINI_API_URL, body, headers, parser, attempt_timeout)
+            if on_chunk:
+                return await post_json_stream_async(
+                    GEMINI_STREAM_URL, body, headers, parser, attempt_timeout, on_chunk
+                )
+            return await post_json_async(GEMINI_API_URL, body, headers, parser, attempt_timeout)
         except urllib.error.HTTPError as exc:
             last_error = exc
             if exc.code not in (429, 500, 502, 503, 504) or attempt == max_retries:
@@ -856,15 +847,15 @@ async def call_gemini_json(
             delay = 2**attempt
             if time.monotonic() + delay >= deadline:
                 raise TimeoutError("Không đủ thời gian để thử lại Gemini.")
-            await asyncio.sleep(delay)
-        except (requests.RequestException, TimeoutError, asyncio.TimeoutError) as exc:
+            await (sleep_func or asyncio.sleep)(delay)
+        except (requests.RequestException, httpx.HTTPError, TimeoutError, asyncio.TimeoutError) as exc:
             last_error = exc
             if attempt == max_retries:
                 raise
             delay = 2**attempt
             if time.monotonic() + delay >= deadline:
                 raise TimeoutError("Không đủ thời gian để thử lại Gemini.")
-            await asyncio.sleep(delay)
+            await (sleep_func or asyncio.sleep)(delay)
     raise RuntimeError(f"Không gọi được Gemini: {last_error}")
 
 
@@ -883,6 +874,62 @@ def post_json(
     return parser(extract_candidate_text(payload))
 
 
+async def post_json_async(url, body, headers, parser, timeout):
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=3)) as client:
+        response = await client.post(url, json=body, headers=headers)
+    if response.status_code >= 400:
+        raise urllib.error.HTTPError(url, response.status_code, response.text, response.headers, None)
+    return parser(extract_candidate_text(response.json()))
+
+
+async def post_json_stream_async(url, body, headers, parser, timeout, on_chunk):
+    chunks: list[str] = []
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=3)) as client:
+        async with client.stream("POST", url, json=body, headers=headers) as response:
+            if response.status_code >= 400:
+                error_text = (await response.aread()).decode("utf-8", errors="replace")
+                raise urllib.error.HTTPError(url, response.status_code, error_text, response.headers, None)
+            async for raw_line in response.aiter_lines():
+                if not raw_line or not raw_line.startswith("data:"):
+                    continue
+                payload = json.loads(raw_line[5:].strip())
+                chunk = extract_candidate_text(payload)
+                if chunk:
+                    chunks.append(chunk)
+                    on_chunk(chunk)
+    return parser("".join(chunks))
+
+
+def post_json_stream(
+    url: str,
+    body: dict[str, Any],
+    headers: dict[str, str],
+    parser,
+    timeout: float,
+    on_chunk,
+) -> dict[str, Any]:
+    response = requests.post(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers=headers,
+        timeout=(3, timeout),
+        stream=True,
+    )
+    if response.status_code >= 400:
+        raise urllib.error.HTTPError(url, response.status_code, response.text, response.headers, None)
+
+    chunks: list[str] = []
+    for raw_line in response.iter_lines(decode_unicode=True):
+        if not raw_line or not raw_line.startswith("data:"):
+            continue
+        payload = json.loads(raw_line[5:].strip())
+        chunk = extract_candidate_text(payload)
+        if chunk:
+            chunks.append(chunk)
+            on_chunk(chunk)
+    return parser("".join(chunks))
+
+
 def gemini_error_message(exc: urllib.error.HTTPError) -> str:
     reason = str(getattr(exc, "reason", "") or "")
     if exc.code in (400, 401, 403) and (
@@ -894,14 +941,17 @@ def gemini_error_message(exc: urllib.error.HTTPError) -> str:
     return "Dịch vụ AI đang lỗi tạm thời. Vui lòng thử lại sau."
 
 
-async def run_ai_sequence(input_text: str, started: float, allow_psychology: bool) -> dict[str, Any]:
+async def run_ai_sequence(input_text: str, started: float, allow_psychology: bool, on_chunk=None) -> dict[str, Any]:
     deadline = started + REQUEST_BUDGET_SECONDS
+    detective_options = {"max_retries": 2}
+    if on_chunk is not None:
+        detective_options["on_chunk"] = on_chunk
     detective = await call_gemini_json(
         build_prompt(input_text),
         RESULT_SCHEMA,
         parse_gemini_result,
         deadline,
-        max_retries=2,
+        **detective_options,
     )
     detective = merge_rule_indicators(detective, input_text, resolve_shortlinks=True)
 
@@ -1024,16 +1074,17 @@ def render_share_card(result: dict[str, Any]) -> BytesIO:
     return output
 
 
-def log_ai_call(input_text: str, result: dict[str, Any]) -> None:
+def log_ai_call(input_text: str, role: str, summary: str) -> None:
     log = list(session.get("ai_call_log", []))
     log.append(
         {
             "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "input_length": len(input_text),
-            "summary": f"{result['detective']['risk_level']}: {result['detective']['summary']}",
+            "role": role,
+            "summary": summary,
         }
     )
-    session["ai_call_log"] = log
+    session["ai_call_log"] = log[-MAX_AI_CALLS_PER_SESSION:]
     session.modified = True
 
 
@@ -1042,9 +1093,55 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
 @app.route("/session_state")
 def session_state():
     return jsonify(get_session_state())
+
+
+@app.route("/transcribe", methods=["POST"])
+def transcribe():
+    state = get_session_state()
+    if state["used"] >= MAX_AI_CALLS_PER_SESSION:
+        return jsonify({"error": "Phiên này đã dùng hết lượt AI."}), 429
+    audio = request.files.get("audio")
+    if not audio:
+        return jsonify({"error": "Không nhận được bản ghi âm."}), 400
+    audio_bytes = audio.read(5 * 1024 * 1024 + 1)
+    if not audio_bytes or len(audio_bytes) > 5 * 1024 * 1024:
+        return jsonify({"error": "Bản ghi phải nhỏ hơn 5 MB."}), 400
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return jsonify({"error": "Máy chủ chưa cấu hình Gemini."}), 503
+
+    mime_type = audio.mimetype if audio.mimetype.startswith("audio/") else "audio/webm"
+    body = {
+        "contents": [{"parts": [
+            {"text": "Chép lại nguyên văn lời nói tiếng Việt trong tệp âm thanh. Chỉ trả phần văn bản, không bình luận."},
+            {"inlineData": {"mimeType": mime_type, "data": base64.b64encode(audio_bytes).decode("ascii")}},
+        ]}],
+        "generationConfig": {"temperature": 0},
+    }
+    try:
+        response = requests.post(
+            GEMINI_API_URL,
+            json=body,
+            headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+            timeout=(3, AI_TIMEOUT_SECONDS),
+        )
+        response.raise_for_status()
+        transcript = extract_candidate_text(response.json()).strip()
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        app.logger.warning("Audio transcription failed: %s", exc)
+        return jsonify({"error": "Chưa chuyển được giọng nói thành chữ. Vui lòng thử lại."}), 503
+
+    session["ai_calls_used"] = int(session.get("ai_calls_used", 0)) + 1
+    log_ai_call(transcript, "Nhập giọng nói", "Đã chuyển bản ghi âm thành văn bản.")
+    return jsonify({"transcript": transcript, "session": get_session_state()})
 
 
 @app.route("/scam_check", methods=["POST"])
@@ -1080,7 +1177,10 @@ def scam_check():
         if result["detective"]["risk_level"] in ("Nghi ngờ", "Nguy hiểm") and available_calls >= 2:
             calls_used = 2
         session["ai_calls_used"] = int(session.get("ai_calls_used", 0)) + calls_used
-        log_ai_call(input_text, result)
+        detective = result["detective"]
+        log_ai_call(input_text, "Thám tử", f"{detective['risk_level']}: {detective['summary']}")
+        if result.get("psychology"):
+            log_ai_call(input_text, "Cô tâm lý", result["psychology"]["explanation"])
         response = {
             "result": result,
             "session": get_session_state(),
@@ -1093,7 +1193,7 @@ def scam_check():
     except urllib.error.HTTPError as exc:
         error = gemini_error_message(exc)
         return jsonify({"error": error, "session": get_session_state()}), 503
-    except (RuntimeError, requests.RequestException, TimeoutError, asyncio.TimeoutError) as exc:
+    except (RuntimeError, requests.RequestException, httpx.HTTPError, TimeoutError, asyncio.TimeoutError) as exc:
         app.logger.warning("AI call failed: %s", exc)
         return (
             jsonify(
@@ -1104,6 +1204,99 @@ def scam_check():
             ),
             503,
         )
+
+
+@app.route("/scam_check_stream", methods=["POST"])
+def scam_check_stream():
+    started = time.monotonic()
+    payload = request.get_json(silent=True) or {}
+    input_text = str(payload.get("input_text", "")).strip()
+    message = validate_input(input_text)
+    if message:
+        return jsonify({"error": message, "session": get_session_state()}), 400
+
+    cached = get_cached_result(input_text)
+    if cached:
+        def cached_events():
+            yield f"event: result\ndata: {json.dumps({'result': cached['result'], 'from_cache': True}, ensure_ascii=False)}\n\n"
+        return app.response_class(stream_with_context(cached_events()), mimetype="text/event-stream")
+
+    state = get_session_state()
+    if state["used"] >= MAX_AI_CALLS_PER_SESSION:
+        return jsonify({"error": "Phiên này đã dùng hết lượt kiểm tra AI.", "session": state}), 429
+
+    available_calls = MAX_AI_CALLS_PER_SESSION - int(session.get("ai_calls_used", 0))
+    allow_psychology = available_calls >= 2
+    session["ai_calls_used"] = int(session.get("ai_calls_used", 0)) + 1
+    log_ai_call(input_text, "Thám tử", "Đang nhận phản hồi theo dòng từ Gemini.")
+
+    events: queue.Queue[tuple[str, Any]] = queue.Queue()
+
+    def on_chunk(chunk: str) -> None:
+        events.put(("chunk", chunk))
+
+    def run_worker() -> None:
+        try:
+            result = asyncio.run(run_ai_sequence(input_text, started, allow_psychology, on_chunk=on_chunk))
+            events.put(("result", result))
+        except Exception as exc:
+            app.logger.warning("Streaming AI call failed: %s", exc)
+            events.put(("error", "Gemini chưa phản hồi được. Vui lòng thử lại sau."))
+        finally:
+            events.put(("done", None))
+
+    threading.Thread(target=run_worker, daemon=True).start()
+
+    @stream_with_context
+    def generate():
+        yield "event: status\ndata: {\"message\": \"Đã kết nối luồng Gemini\"}\n\n"
+        while True:
+            event, value = events.get()
+            if event == "done":
+                break
+            if event == "chunk":
+                data = {"text": value}
+            elif event == "result":
+                data = {"result": value, "from_cache": False}
+            else:
+                data = {"message": value}
+            yield f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    response = app.response_class(generate(), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Accel-Buffering"] = "no"
+    return response
+
+
+@app.route("/stream_finalize", methods=["POST"])
+def stream_finalize():
+    payload = request.get_json(silent=True) or {}
+    input_text = str(payload.get("input_text", "")).strip()
+    raw_result = payload.get("result") or {}
+    if validate_input(input_text):
+        return jsonify({"error": "Nội dung hoàn tất luồng không hợp lệ."}), 400
+    if get_cached_result(input_text):
+        return jsonify({"session": get_session_state(), "cached": True})
+
+    detective = parse_gemini_result(raw_result.get("detective"))
+    psychology = raw_result.get("psychology")
+    result = {
+        "detective": detective,
+        "psychology": parse_psychology_result(psychology) if psychology else None,
+        "psychology_error": str(raw_result.get("psychology_error") or "") or None,
+    }
+    logs = list(session.get("ai_call_log", []))
+    for item in reversed(logs):
+        if item.get("role") == "Thám tử" and item.get("summary") == "Đang nhận phản hồi theo dòng từ Gemini.":
+            item["summary"] = f"{detective['risk_level']}: {detective['summary']}"
+            break
+    session["ai_call_log"] = logs
+    session.modified = True
+    if result["psychology"] and int(session.get("ai_calls_used", 0)) < MAX_AI_CALLS_PER_SESSION:
+        session["ai_calls_used"] = int(session.get("ai_calls_used", 0)) + 1
+        log_ai_call(input_text, "Cô tâm lý", result["psychology"]["explanation"])
+    set_cached_result(input_text, {"result": result})
+    return jsonify({"session": get_session_state(), "cached": False})
 
 
 @app.route("/rescue_plan", methods=["POST"])
@@ -1140,4 +1333,3 @@ def share_card():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.getenv("PORT", "5000")))
->>>>>>> Stashed changes

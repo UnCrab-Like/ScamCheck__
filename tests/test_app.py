@@ -1,10 +1,15 @@
 import asyncio
+import io
+import time
+import urllib.error
 
 import pytest
 
 from app import (
     app,
     analyze_links,
+    baseline_risk_level,
+    call_gemini_json,
     detect_spoofed_domain,
     enforce_risk_floor,
     extract_urls,
@@ -12,11 +17,144 @@ from app import (
     hotline_contacts,
     parse_gemini_result,
     parse_psychology_result,
+    post_json_stream,
     rule_indicators,
     run_ai_sequence,
     sanitize_phone_hallucinations,
     validate_input,
 )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Thông báo: tài khoản ngân hàng của quý khách sẽ bị khóa lúc 22:00. Xác minh ngay tại http://vietcombank-login-alert.example và cung cấp mã OTP.",
+        "Tôi là cán bộ công an điều tra. Bác đang liên quan một vụ rửa tiền; phải giữ bí mật và chuyển khoản 20 triệu đồng vào tài khoản an toàn ngay để chứng minh vô tội.",
+    ],
+)
+def test_dangerous_ui_samples_have_red_risk_floor(text):
+    assert baseline_risk_level(text) == "Nguy hiểm"
+
+
+def test_index_has_feature_and_display_settings():
+    app.config.update(TESTING=True, SECRET_KEY="test")
+    response = app.test_client().get("/")
+    page = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'id="feature-menu"' in page
+    assert 'name="theme" value="light"' in page
+    assert 'name="theme" value="dark"' in page
+    assert 'id="simplified-toggle"' in page
+    assert 'id="accessibility-results"' in page
+
+
+def test_health_endpoint_is_ready_for_host_monitoring():
+    response = app.test_client().get("/health")
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok"}
+
+
+def test_stream_parser_emits_real_chunks(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+        headers = {}
+        text = ""
+
+        def iter_lines(self, decode_unicode=True):
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"{\\"risk_"}]}}]}'
+            yield 'data: {"candidates":[{"content":{"parts":[{"text":"level\\":\\"An toàn\\"}"}]}}]}'
+
+    monkeypatch.setattr("app.requests.post", lambda *args, **kwargs: FakeResponse())
+    chunks = []
+    result = post_json_stream("https://example.test", {}, {}, lambda text: text, 3, chunks.append)
+
+    assert len(chunks) == 2
+    assert result == '{"risk_level":"An toàn"}'
+
+
+def test_rate_limit_retries_twice_with_exponential_delays(monkeypatch):
+    attempts = []
+    delays = []
+
+    def fail(*args, **kwargs):
+        attempts.append(1)
+        raise urllib.error.HTTPError("https://example.test", 429, "limited", {}, None)
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    async def async_fail(*args, **kwargs):
+        fail()
+
+    monkeypatch.setattr("app.post_json_async", async_fail)
+    with pytest.raises(urllib.error.HTTPError):
+        asyncio.run(call_gemini_json("prompt", {}, lambda value: value, time.monotonic() + 20, max_retries=2, sleep_func=fake_sleep))
+
+    assert len(attempts) == 3
+    assert delays == [1, 2]
+
+
+def test_transcription_rejects_missing_audio():
+    app.config.update(TESTING=True, SECRET_KEY="voice-test")
+    response = app.test_client().post("/transcribe", data={})
+    assert response.status_code == 400
+    assert "bản ghi" in response.get_json()["error"].lower()
+
+
+def test_stream_route_emits_chunk_and_final_result(monkeypatch):
+    app.config.update(TESTING=True, SECRET_KEY="stream-test")
+
+    async def fake_sequence(input_text, started, allow_psychology, on_chunk=None):
+        on_chunk('{"risk_level":"An toàn"')
+        return {
+            "detective": {
+                "risk_level": "An toàn",
+                "indicators": [{"label": "Bình thường", "quote": "", "explanation": "Không thấy dấu hiệu."}],
+                "actions": ["Kiểm tra nguồn.", "Không chia sẻ OTP.", "Lưu tin nếu cần."],
+                "summary": "Không thấy dấu hiệu rõ.",
+            },
+            "psychology": None,
+            "psychology_error": None,
+        }
+
+    monkeypatch.setattr("app.run_ai_sequence", fake_sequence)
+    response = app.test_client().post(
+        "/scam_check_stream",
+        json={"input_text": "Lịch họp khu phố lúc 19 giờ tối nay."},
+        buffered=True,
+    )
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "event: chunk" in body
+    assert "event: result" in body
+    assert "An toàn" in body
+
+
+def test_successful_risky_check_logs_each_ai_role(monkeypatch):
+    app.config.update(TESTING=True, SECRET_KEY="role-log-test")
+
+    async def fake_sequence(input_text, started, allow_psychology):
+        return {
+            "detective": {
+                "risk_level": "Nguy hiểm",
+                "indicators": [{"label": "OTP", "quote": "OTP", "explanation": "Không chia sẻ."}],
+                "actions": ["Dừng lại.", "Không gửi OTP.", "Gọi ngân hàng."],
+                "summary": "Tin yêu cầu OTP.",
+            },
+            "psychology": {"explanation": "Cô thấy tin tạo áp lực. Bác nên dừng lại."},
+            "psychology_error": None,
+        }
+
+    monkeypatch.setattr("app.run_ai_sequence", fake_sequence)
+    client = app.test_client()
+    response = client.post("/scam_check", json={"input_text": "Hãy gửi mã OTP cho người lạ ngay."})
+    logs = client.get("/session_state").get_json()["logs"]
+
+    assert response.status_code == 200
+    assert [item["role"] for item in logs] == ["Thám tử", "Cô tâm lý"]
 
 
 @pytest.mark.parametrize(

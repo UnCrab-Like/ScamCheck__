@@ -8,6 +8,39 @@
   </head>
   <body>
     <main class="app-shell">
+      <nav class="top-menu" aria-label="Trình đơn chính">
+        <button type="button" id="feature-menu-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="feature-menu"><span aria-hidden="true">☰</span> Bảng điều khiển</button>
+        <button type="button" id="settings-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="settings-panel"><span aria-hidden="true">⚙</span> Cài đặt</button>
+      </nav>
+
+      <div id="feature-overlay" class="drawer-overlay hidden" aria-hidden="true"></div>
+      <aside id="feature-menu" class="menu-panel dashboard-drawer hidden" aria-label="Bảng điều khiển">
+        <div class="drawer-heading">
+          <div><span class="dashboard-mark" aria-hidden="true">S</span><strong>ScamCheck</strong><small>Bảng điều khiển</small></div>
+          <button type="button" id="feature-menu-close" class="icon-button" aria-label="Đóng bảng điều khiển">×</button>
+        </div>
+        <nav class="dashboard-links" aria-label="Tính năng">
+          <button type="button" data-feature="checker"><span aria-hidden="true">⌕</span><span>Kiểm tra tin nhắn</span></button>
+          <button type="button" data-feature="library"><span aria-hidden="true">▤</span><span>Thư viện lừa đảo</span></button>
+          <button type="button" data-feature="practice"><span aria-hidden="true">✓</span><span>Luyện tập</span></button>
+          <button type="button" data-feature="history"><span aria-hidden="true">↶</span><span>Lịch sử</span></button>
+          <button type="button" data-feature="log"><span aria-hidden="true">⌁</span><span>Nhật ký AI</span></button>
+          <button type="button" data-feature="accessibility"><span aria-hidden="true">Aa</span><span>Kiểm tra tiếp cận</span></button>
+        </nav>
+      </aside>
+
+      <section id="settings-panel" class="settings-panel hidden" aria-labelledby="settings-title">
+        <h2 id="settings-title"><span aria-hidden="true">⚙</span> Cài đặt hiển thị</h2>
+        <fieldset>
+          <legend><span aria-hidden="true">◐</span> Giao diện</legend>
+          <label><input type="radio" name="theme" value="light"> <span aria-hidden="true">☀</span> Sáng</label>
+          <label><input type="radio" name="theme" value="dark"> <span aria-hidden="true">☾</span> Tối</label>
+        </fieldset>
+        <label class="setting-switch"><input type="checkbox" id="simplified-toggle"> <span aria-hidden="true">▦</span> Chế độ đơn giản — đặt tất cả tính năng trên một trang</label>
+        <label class="setting-switch"><input type="checkbox" id="contrast-setting"> <span aria-hidden="true">◑</span> Tương phản cao</label>
+        <label class="setting-switch"><input type="checkbox" id="large-text-setting"> <span aria-hidden="true">A⁺</span> Phóng chữ</label>
+      </section>
+
       <section class="workbench" aria-labelledby="app-title">
         <div class="intro">
           <p class="eyebrow">ScamCheck</p>
@@ -22,18 +55,23 @@
             <span id="usage-count">0/10 lượt AI</span>
           </div>
 
-          <div class="sample-grid" aria-label="Tin mẫu">
-            <button type="button" class="secondary sample-btn" data-sample="prize">Tin trúng thưởng</button>
-            <button type="button" class="secondary sample-btn" data-sample="bank">Tin ngân hàng</button>
-            <button type="button" class="secondary sample-btn" data-sample="delivery">Tin giao hàng</button>
+          <div class="sample-heading">
+            <span>Thử tin mẫu từ an toàn đến nguy hiểm</span>
+            <span class="sample-hint">Chọn một tin rồi bấm “Kiểm tra”</span>
+          </div>
+          <div class="sample-grid" aria-label="Tin mẫu từ an toàn đến nguy hiểm">
+            <button type="button" class="sample-btn sample-safe" data-sample="family"><span>An toàn</span>Tin gia đình</button>
+            <button type="button" class="sample-btn sample-safe" data-sample="appointment"><span>An toàn</span>Lịch hẹn quen</button>
+            <button type="button" class="sample-btn sample-warning" data-sample="promotion"><span>Nghi ngờ</span>Khuyến mãi có link</button>
+            <button type="button" class="sample-btn sample-warning" data-sample="delivery"><span>Nghi ngờ</span>Phí giao hàng</button>
+            <button type="button" class="sample-btn sample-danger" data-sample="bank"><span>Nguy hiểm</span>Giả ngân hàng</button>
+            <button type="button" class="sample-btn sample-danger" data-sample="police"><span>Nguy hiểm</span>Giả công an</button>
           </div>
 
           <div class="actions-row">
             <button type="button" id="voice-toggle" class="secondary">Bật đọc giọng nói</button>
             <button type="button" id="library-open" class="secondary">Thư viện lừa đảo</button>
             <button type="button" id="practice-open" class="secondary">Luyện tập 10 câu</button>
-            <button type="button" id="contrast-toggle" class="secondary">Tương phản cao</button>
-            <button type="button" id="font-toggle" class="secondary">Phóng chữ</button>
             <button type="submit" id="check-button" class="primary">Kiểm tra</button>
           </div>
         </form>
@@ -41,7 +79,7 @@
 
       <section id="status-panel" class="status-panel hidden" aria-live="polite">
         <div class="spinner" aria-hidden="true"></div>
-        <p>Đang phân tích bằng Gemini...</p>
+        <div><p>Đang phân tích bằng Gemini...</p><pre id="stream-preview" class="stream-preview hidden"></pre></div>
       </section>
 
       <section id="result-panel" class="result-panel hidden" aria-live="polite">
@@ -83,7 +121,7 @@
         </div>
       </section>
 
-      <section id="library-panel" class="library-panel hidden" aria-labelledby="library-title">
+      <section id="library-panel" class="library-panel hidden" data-feature-section="library" aria-labelledby="library-title">
         <div class="section-heading">
           <h2 id="library-title">Thư viện kiểu lừa đảo</h2>
           <button type="button" id="library-close" class="secondary">Quay lại kiểm tra</button>
@@ -93,7 +131,7 @@
         <article id="library-detail" class="library-detail hidden"></article>
       </section>
 
-      <section id="practice-panel" class="practice-panel hidden" aria-labelledby="practice-title">
+      <section id="practice-panel" class="practice-panel hidden" data-feature-section="practice" aria-labelledby="practice-title">
         <div class="section-heading">
           <h2 id="practice-title">Luyện tập 10 câu</h2>
           <button type="button" id="practice-close" class="secondary">Quay lại kiểm tra</button>
@@ -111,7 +149,7 @@
         <div id="practice-summary" class="practice-summary hidden"></div>
       </section>
 
-      <section class="history-panel">
+      <section class="history-panel" data-feature-section="history">
         <div class="section-heading">
           <h2>Lịch sử 10 tin gần nhất</h2>
           <button type="button" id="clear-history" class="secondary danger">Xóa toàn bộ</button>
@@ -119,20 +157,19 @@
         <div id="history-list" class="history-list"></div>
       </section>
 
-      <section class="log-panel">
+      <section class="log-panel" data-feature-section="log">
         <h2>Nhật ký gọi AI trong phiên</h2>
         <div id="call-log" class="call-log"></div>
       </section>
 
-      <section class="a11y-panel">
-        <h2>Tự kiểm chuẩn AA</h2>
-        <ul>
-          <li>Đạt: cỡ chữ nội dung tối thiểu 18px.</li>
-          <li>Đạt: màu chữ và nền có tương phản AA cho trạng thái chính.</li>
-          <li>Đạt: bố cục một cột không vỡ trên iPhone.</li>
-          <li>Đạt: nút có nhãn rõ và vùng chạm tối thiểu 44px.</li>
-        </ul>
+      <section id="accessibility-panel" class="a11y-panel" data-feature-section="accessibility" aria-labelledby="accessibility-title">
+        <div class="section-heading">
+          <div><h2 id="accessibility-title">Bảng tự kiểm tiếp cận AA</h2><p class="summary">Kết quả được đo lại trên giao diện và chế độ màu hiện tại.</p></div>
+          <button type="button" id="accessibility-run" class="secondary">Kiểm tra lại</button>
+        </div>
+        <ul id="accessibility-results" class="audit-list" aria-live="polite"></ul>
       </section>
+
     </main>
 
     <footer class="legal-footer">

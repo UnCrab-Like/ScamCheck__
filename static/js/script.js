@@ -1,16 +1,22 @@
 const MAX_HISTORY = 10;
 const HISTORY_KEY = "scamcheck.history.v1";
-const CACHE_KEY = "scamcheck.cache.v1";
+const CACHE_KEY = "scamcheck.cache.v2";
 const MAX_CLIENT_CACHE = 20;
 const SETTINGS_KEY = "scamcheck.settings.v1";
 
 const samples = {
-  prize:
-    "Chuc mung! Ban da trung thuong 50.000.000 VND. Bam vao https://vnpay-secure.example-prize.com va nhap OTP trong 10 phut de nhan tien.",
-  bank:
-    "Thong bao: Tai khoan ngan hang cua quy khach se bi khoa luc 22:00. Xac minh ngay tai http://vietcombank-login-alert.example va cung cap ma OTP.",
+  family:
+    "Mẹ ơi, tối nay con về muộn 30 phút vì lớp học kết thúc trễ. Mẹ cứ ăn cơm trước nhé.",
+  appointment:
+    "Nhắc bác: lịch khám định kỳ lúc 9 giờ sáng thứ Hai tại phòng khám quen. Bác mang theo sổ khám bệnh nhé.",
+  promotion:
+    "Cửa hàng thông báo bác nhận được mã giảm giá 20%. Xem chương trình tại https://khuyenmai.example trước cuối ngày hôm nay.",
   delivery:
-    "Don hang cua ban thieu phi hai quan 18.000d. Tai tep cap-nhat.apk hoac bam lien ket rut gon bit.ly/nhanhang-phi de nhan hang trong hom nay.",
+    "Đơn hàng đang chờ giao nhưng còn thiếu phí 18.000 đồng. Bấm bit.ly/nhan-hang để thanh toán trong hôm nay.",
+  bank:
+    "Thông báo: tài khoản ngân hàng của quý khách sẽ bị khóa lúc 22:00. Xác minh ngay tại http://vietcombank-login-alert.example và cung cấp mã OTP.",
+  police:
+    "Tôi là cán bộ công an điều tra. Bác đang liên quan một vụ rửa tiền; phải giữ bí mật và chuyển khoản 20 triệu đồng vào tài khoản an toàn ngay để chứng minh vô tội.",
 };
 
 const scamTypes = [
@@ -106,6 +112,7 @@ const input = document.querySelector("#message-input");
 const charCount = document.querySelector("#char-count");
 const usageCount = document.querySelector("#usage-count");
 const statusPanel = document.querySelector("#status-panel");
+const streamPreview = document.querySelector("#stream-preview");
 const resultPanel = document.querySelector("#result-panel");
 const riskCard = document.querySelector("#risk-card");
 const summary = document.querySelector("#summary");
@@ -137,10 +144,21 @@ const situationPanel = document.querySelector("#situation-panel");
 const responderPanel = document.querySelector("#responder-panel");
 const responderSteps = document.querySelector("#responder-steps");
 const shareCardButton = document.querySelector("#share-card-button");
-const contrastToggle = document.querySelector("#contrast-toggle");
-const fontToggle = document.querySelector("#font-toggle");
+const featureMenuToggle = document.querySelector("#feature-menu-toggle");
+const featureMenu = document.querySelector("#feature-menu");
+const featureMenuClose = document.querySelector("#feature-menu-close");
+const featureOverlay = document.querySelector("#feature-overlay");
+const settingsToggle = document.querySelector("#settings-toggle");
+const settingsPanel = document.querySelector("#settings-panel");
+const simplifiedToggle = document.querySelector("#simplified-toggle");
+const contrastSetting = document.querySelector("#contrast-setting");
+const largeTextSetting = document.querySelector("#large-text-setting");
+const accessibilityRun = document.querySelector("#accessibility-run");
+const accessibilityResults = document.querySelector("#accessibility-results");
 
 let recognition = null;
+let mediaRecorder = null;
+let audioChunks = [];
 let listening = false;
 let progressTimer = null;
 let practiceIndex = 0;
@@ -221,8 +239,54 @@ function saveSettings(settings) {
 
 function applySettings() {
   const settings = getSettings();
+  const theme = settings.theme === "dark" ? "dark" : "light";
+  const simplified = settings.simplified !== false;
+  document.body.classList.toggle("dark-mode", theme === "dark");
   document.body.classList.toggle("high-contrast", Boolean(settings.highContrast));
   document.body.classList.toggle("large-text", Boolean(settings.largeText));
+  document.body.classList.toggle("focused-mode", !simplified);
+  document.querySelectorAll('input[name="theme"]').forEach((radio) => {
+    radio.checked = radio.value === theme;
+  });
+  simplifiedToggle.checked = simplified;
+  contrastSetting.checked = Boolean(settings.highContrast);
+  largeTextSetting.checked = Boolean(settings.largeText);
+  if (accessibilityResults) runAccessibilityAudit();
+}
+
+function colorChannels(color) {
+  const match = color.match(/[\d.]+/g) || [];
+  return match.slice(0, 3).map(Number);
+}
+
+function luminance(color) {
+  const channels = colorChannels(color).map((value) => {
+    const normalized = value / 255;
+    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(foreground, background) {
+  const light = Math.max(luminance(foreground), luminance(background));
+  const dark = Math.min(luminance(foreground), luminance(background));
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function runAccessibilityAudit() {
+  if (!accessibilityResults) return;
+  const bodyStyle = getComputedStyle(document.body);
+  const bodyContrast = contrastRatio(bodyStyle.color, bodyStyle.backgroundColor);
+  const controls = [...document.querySelectorAll("button")].filter((item) => item.offsetParent !== null);
+  const checks = [
+    { label: "Cỡ chữ nội dung tối thiểu 18px", pass: parseFloat(bodyStyle.fontSize) >= 18 },
+    { label: `Tương phản chữ/nền ${bodyContrast.toFixed(2)}:1 (yêu cầu 4.5:1)`, pass: bodyContrast >= 4.5 },
+    { label: "Mọi nút đang hiển thị có vùng chạm tối thiểu 44px", pass: controls.every((item) => item.getBoundingClientRect().height >= 44) },
+    { label: "Ô nhập có nhãn liên kết rõ ràng", pass: Boolean(document.querySelector('label[for="message-input"]')) },
+    { label: "Bố cục không rộng hơn màn hình hiện tại", pass: document.documentElement.scrollWidth <= window.innerWidth + 1 },
+    { label: "Điều khiển chính hỗ trợ trạng thái focus bàn phím", pass: CSS.supports("selector(:focus-visible)") },
+  ];
+  accessibilityResults.innerHTML = checks.map((check) => `<li class="${check.pass ? "audit-pass" : "audit-fail"}">${check.pass ? "Đạt" : "Chưa đạt"}: ${escapeHtml(check.label)}</li>`).join("");
 }
 
 function addHistory(message, result) {
@@ -383,6 +447,10 @@ function showStatus(show) {
     clearInterval(progressTimer);
     progressTimer = null;
   }
+  if (!show) {
+    streamPreview.classList.add("hidden");
+    streamPreview.textContent = "";
+  }
 }
 
 function startProgressStream() {
@@ -441,22 +509,54 @@ async function submitCheck(event) {
       renderResult(message, cached.result);
       return;
     }
-    const response = await fetch("/scam_check", {
+    const response = await fetch("/scam_check_stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input_text: message }),
     });
-    const data = await response.json();
-    renderSession(data.session);
-
     if (!response.ok) {
+      const data = await response.json();
       showError(data.error || "Không thể kiểm tra lúc này.");
       return;
     }
+    if (!response.body) throw new Error("Trình duyệt không hỗ trợ phản hồi theo dòng.");
 
-    renderResult(message, data.result);
-    setClientCache(message, data.result);
-    addHistory(message, data.result);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResult = null;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split("\n\n");
+      buffer = blocks.pop() || "";
+      blocks.forEach((block) => {
+        const eventName = block.match(/^event:\s*(.+)$/m)?.[1];
+        const dataLine = block.match(/^data:\s*(.+)$/m)?.[1];
+        if (!eventName || !dataLine) return;
+        const data = JSON.parse(dataLine);
+        if (eventName === "chunk") {
+          if (progressTimer) clearInterval(progressTimer);
+          progressTimer = null;
+          statusPanel.querySelector("p").textContent = "Gemini đang trả kết quả...";
+          streamPreview.classList.remove("hidden");
+          streamPreview.textContent += data.text;
+        }
+        if (eventName === "result") finalResult = data.result;
+        if (eventName === "error") throw new Error(data.message);
+      });
+    }
+    if (!finalResult) throw new Error("Luồng Gemini kết thúc trước khi có kết quả.");
+    renderResult(message, finalResult);
+    setClientCache(message, finalResult);
+    addHistory(message, finalResult);
+    const finalizeResponse = await fetch("/stream_finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input_text: message, result: finalResult }),
+    });
+    if (finalizeResponse.ok) renderSession((await finalizeResponse.json()).session);
   } catch {
     showError("Mạng không ổn định hoặc máy chủ chưa chạy. Vui lòng thử lại.");
   } finally {
@@ -530,9 +630,51 @@ async function downloadShareCard() {
 function setupVoiceInput() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    voiceToggle.addEventListener("click", () => {
-      input.focus();
-      showError("Trình duyệt này chưa hỗ trợ nút đọc giọng nói. Trên iPhone, hãy dùng biểu tượng micro trên bàn phím.");
+    voiceToggle.textContent = "Bắt đầu ghi giọng nói";
+    voiceToggle.addEventListener("click", async () => {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        input.focus();
+        showError("Trình duyệt chưa hỗ trợ ghi âm. Hãy dùng biểu tượng micro trên bàn phím.");
+        return;
+      }
+      if (mediaRecorder?.state === "recording") {
+        mediaRecorder.stop();
+        voiceToggle.textContent = "Đang chuyển thành chữ...";
+        voiceToggle.disabled = true;
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data.size) audioChunks.push(event.data);
+        });
+        mediaRecorder.addEventListener("stop", async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          const mimeType = mediaRecorder.mimeType || "audio/webm";
+          const formData = new FormData();
+          formData.append("audio", new Blob(audioChunks, { type: mimeType }), "voice-recording");
+          try {
+            const response = await fetch("/transcribe", { method: "POST", body: formData });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Không chuyển được giọng nói.");
+            input.value = data.transcript;
+            updateCharCount();
+            input.focus();
+          } catch (error) {
+            showError(error.message);
+          } finally {
+            voiceToggle.disabled = false;
+            voiceToggle.textContent = "Bắt đầu ghi giọng nói";
+            loadSession();
+          }
+        });
+        mediaRecorder.start();
+        voiceToggle.textContent = "Dừng và chuyển thành chữ";
+      } catch {
+        showError("Không mở được micro. Hãy cho phép truy cập micro trong cài đặt trình duyệt.");
+      }
     });
     return;
   }
@@ -722,19 +864,96 @@ situationPanel.addEventListener("click", (event) => {
 
 shareCardButton.addEventListener("click", downloadShareCard);
 
-contrastToggle.addEventListener("click", () => {
+function toggleMenu(panel, button) {
+  const willOpen = panel.classList.contains("hidden");
+  featureMenu.classList.add("hidden");
+  settingsPanel.classList.add("hidden");
+  featureMenuToggle.setAttribute("aria-expanded", "false");
+  settingsToggle.setAttribute("aria-expanded", "false");
+  panel.classList.toggle("hidden", !willOpen);
+  button.setAttribute("aria-expanded", String(willOpen));
+  featureOverlay.classList.toggle("hidden", panel !== featureMenu || !willOpen);
+}
+
+function closeFeatureMenu() {
+  featureMenu.classList.add("hidden");
+  featureOverlay.classList.add("hidden");
+  featureMenuToggle.setAttribute("aria-expanded", "false");
+  featureMenuToggle.focus();
+}
+
+function openFeature(feature) {
+  featureMenu.classList.add("hidden");
+  featureOverlay.classList.add("hidden");
+  featureMenuToggle.setAttribute("aria-expanded", "false");
+  document.querySelectorAll("[data-feature-section]").forEach((section) => {
+    section.classList.remove("feature-active");
+  });
+
+  if (feature === "checker") {
+    document.querySelector(".workbench").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (feature === "library") {
+    libraryPanel.classList.remove("hidden");
+  }
+  if (feature === "practice") {
+    practiceIndex = 0;
+    practiceScore = 0;
+    practicePanel.classList.remove("hidden");
+    renderPractice();
+  }
+  const section = document.querySelector(`[data-feature-section="${feature}"]`);
+  if (section) {
+    section.classList.add("feature-active");
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+featureMenuToggle.addEventListener("click", () => toggleMenu(featureMenu, featureMenuToggle));
+featureMenuClose.addEventListener("click", closeFeatureMenu);
+featureOverlay.addEventListener("click", closeFeatureMenu);
+settingsToggle.addEventListener("click", () => toggleMenu(settingsPanel, settingsToggle));
+featureMenu.addEventListener("click", (event) => {
+  const feature = event.target.closest("[data-feature]")?.dataset.feature;
+  if (feature) openFeature(feature);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !featureMenu.classList.contains("hidden")) closeFeatureMenu();
+});
+
+document.querySelectorAll('input[name="theme"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    const settings = getSettings();
+    settings.theme = radio.value;
+    saveSettings(settings);
+    applySettings();
+  });
+});
+
+simplifiedToggle.addEventListener("change", () => {
   const settings = getSettings();
-  settings.highContrast = !settings.highContrast;
+  settings.simplified = simplifiedToggle.checked;
   saveSettings(settings);
   applySettings();
 });
 
-fontToggle.addEventListener("click", () => {
+contrastSetting.addEventListener("change", () => {
   const settings = getSettings();
-  settings.largeText = !settings.largeText;
+  settings.highContrast = contrastSetting.checked;
   saveSettings(settings);
   applySettings();
 });
+
+largeTextSetting.addEventListener("change", () => {
+  const settings = getSettings();
+  settings.largeText = largeTextSetting.checked;
+  saveSettings(settings);
+  applySettings();
+});
+
+accessibilityRun.addEventListener("click", runAccessibilityAudit);
 
 input.addEventListener("input", updateCharCount);
 form.addEventListener("submit", submitCheck);
