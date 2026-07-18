@@ -1090,7 +1090,32 @@ def log_ai_call(input_text: str, role: str, summary: str) -> None:
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", active_page="checker")
+
+
+@app.route("/library")
+def library_page():
+    return render_template("index.html", active_page="library")
+
+
+@app.route("/practice")
+def practice_page():
+    return render_template("index.html", active_page="practice")
+
+
+@app.route("/history")
+def history_page():
+    return render_template("index.html", active_page="history")
+
+
+@app.route("/ai-log")
+def ai_log_page():
+    return render_template("index.html", active_page="log")
+
+
+@app.route("/accessibility")
+def accessibility_page():
+    return render_template("index.html", active_page="accessibility")
 
 
 @app.route("/health")

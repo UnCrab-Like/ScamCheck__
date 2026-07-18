@@ -45,8 +45,18 @@ def test_index_has_feature_and_display_settings():
     assert 'id="feature-menu"' in page
     assert 'name="theme" value="light"' in page
     assert 'name="theme" value="dark"' in page
-    assert 'id="simplified-toggle"' in page
     assert 'id="accessibility-results"' in page
+
+
+@pytest.mark.parametrize(
+    ("path", "page"),
+    [("/", "checker"), ("/library", "library"), ("/practice", "practice"), ("/history", "history"), ("/ai-log", "log"), ("/accessibility", "accessibility")],
+)
+def test_features_have_distinct_web_pages(path, page):
+    app.config.update(TESTING=True, SECRET_KEY="page-test")
+    response = app.test_client().get(path)
+    assert response.status_code == 200
+    assert f'data-page="{page}"' in response.get_data(as_text=True)
 
 
 def test_health_endpoint_is_ready_for_host_monitoring():

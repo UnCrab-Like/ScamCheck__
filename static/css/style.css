@@ -224,7 +224,8 @@ button:disabled {
   gap: 8px;
 }
 
-.dashboard-links button {
+.dashboard-links button,
+.dashboard-links a {
   display: grid;
   grid-template-columns: 34px 1fr;
   align-items: center;
@@ -234,14 +235,21 @@ button:disabled {
   background: transparent;
   color: var(--text);
   text-align: left;
+  border-radius: 12px;
+  padding: 10px 16px;
+  text-decoration: none;
+  font-weight: 700;
 }
 
-.dashboard-links button:hover {
+.dashboard-links button:hover,
+.dashboard-links a:hover,
+.dashboard-links a[aria-current="page"] {
   background: var(--surface-soft);
   color: var(--blue);
 }
 
-.dashboard-links button span:first-child {
+.dashboard-links button span:first-child,
+.dashboard-links a span:first-child {
   color: var(--blue);
   font-size: 24px;
   text-align: center;
@@ -285,6 +293,45 @@ body.focused-mode [data-feature-section] {
 
 body.focused-mode [data-feature-section].feature-active {
   display: block;
+}
+
+.button-link {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--blue);
+  border-radius: 12px;
+  padding: 10px 16px;
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+body[data-page] .workbench,
+body[data-page] .status-panel,
+body[data-page] .result-panel,
+body[data-page] .library-panel,
+body[data-page] .practice-panel,
+body[data-page] .history-panel,
+body[data-page] .log-panel,
+body[data-page] .a11y-panel {
+  display: none;
+}
+
+body[data-page="checker"] .workbench,
+body[data-page="checker"] .status-panel:not(.hidden),
+body[data-page="checker"] .result-panel:not(.hidden),
+body[data-page="library"] .library-panel,
+body[data-page="practice"] .practice-panel,
+body[data-page="history"] .history-panel,
+body[data-page="log"] .log-panel,
+body[data-page="accessibility"] .a11y-panel {
+  display: block;
+}
+
+body[data-page="checker"] .status-panel:not(.hidden) {
+  display: flex;
 }
 
 .workbench,

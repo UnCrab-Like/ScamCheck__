@@ -150,7 +150,6 @@ const featureMenuClose = document.querySelector("#feature-menu-close");
 const featureOverlay = document.querySelector("#feature-overlay");
 const settingsToggle = document.querySelector("#settings-toggle");
 const settingsPanel = document.querySelector("#settings-panel");
-const simplifiedToggle = document.querySelector("#simplified-toggle");
 const contrastSetting = document.querySelector("#contrast-setting");
 const largeTextSetting = document.querySelector("#large-text-setting");
 const accessibilityRun = document.querySelector("#accessibility-run");
@@ -240,15 +239,12 @@ function saveSettings(settings) {
 function applySettings() {
   const settings = getSettings();
   const theme = settings.theme === "dark" ? "dark" : "light";
-  const simplified = settings.simplified !== false;
   document.body.classList.toggle("dark-mode", theme === "dark");
   document.body.classList.toggle("high-contrast", Boolean(settings.highContrast));
   document.body.classList.toggle("large-text", Boolean(settings.largeText));
-  document.body.classList.toggle("focused-mode", !simplified);
   document.querySelectorAll('input[name="theme"]').forEach((radio) => {
     radio.checked = radio.value === theme;
   });
-  simplifiedToggle.checked = simplified;
   contrastSetting.checked = Boolean(settings.highContrast);
   largeTextSetting.checked = Boolean(settings.largeText);
   if (accessibilityResults) runAccessibilityAudit();
@@ -811,8 +807,7 @@ clearHistoryButton.addEventListener("click", () => {
 });
 
 libraryOpen.addEventListener("click", () => {
-  libraryPanel.classList.remove("hidden");
-  libraryPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.location.href = "/library";
 });
 
 libraryClose.addEventListener("click", () => {
@@ -831,11 +826,7 @@ libraryList.addEventListener("click", (event) => {
 });
 
 practiceOpen.addEventListener("click", () => {
-  practiceIndex = 0;
-  practiceScore = 0;
-  practicePanel.classList.remove("hidden");
-  renderPractice();
-  practicePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.location.href = "/practice";
 });
 
 practiceClose.addEventListener("click", () => {
@@ -932,13 +923,6 @@ document.querySelectorAll('input[name="theme"]').forEach((radio) => {
   });
 });
 
-simplifiedToggle.addEventListener("change", () => {
-  const settings = getSettings();
-  settings.simplified = simplifiedToggle.checked;
-  saveSettings(settings);
-  applySettings();
-});
-
 contrastSetting.addEventListener("change", () => {
   const settings = getSettings();
   settings.highContrast = contrastSetting.checked;
@@ -964,3 +948,9 @@ loadSession();
 setupVoiceInput();
 renderLibrary();
 applySettings();
+
+if (document.body.dataset.page === "library") libraryPanel.classList.remove("hidden");
+if (document.body.dataset.page === "practice") {
+  practicePanel.classList.remove("hidden");
+  renderPractice();
+}
