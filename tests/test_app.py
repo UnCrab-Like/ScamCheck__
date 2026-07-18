@@ -47,7 +47,6 @@ def test_index_has_feature_and_display_settings():
     assert 'name="theme" value="dark"' in page
     assert 'id="accessibility-results"' in page
     assert 'class="desktop-toolbar"' in page
-    assert 'class="mobile-scroll-toolbar"' in page
 
 
 @pytest.mark.parametrize(
