@@ -123,9 +123,14 @@ const historyList = document.querySelector("#history-list");
 const clearHistoryButton = document.querySelector("#clear-history");
 const callLog = document.querySelector("#call-log");
 const checkButton = document.querySelector("#check-button");
+const networkStatus = document.querySelector("#network-status");
 const voiceToggle = document.querySelector("#voice-toggle");
 const psychologyPanel = document.querySelector("#psychology-panel");
-const psychologyText = document.querySelector("#psychology-text");
+const psychologyChat = document.querySelector("#psychology-chat");
+const psychologyChatForm = document.querySelector("#psychology-chat-form");
+const psychologyChatInput = document.querySelector("#psychology-chat-input");
+const psychologySend = document.querySelector("#psychology-send");
+const psychologyChatStatus = document.querySelector("#psychology-chat-status");
 const libraryPanel = document.querySelector("#library-panel");
 const libraryOpen = document.querySelector("#library-open");
 const libraryClose = document.querySelector("#library-close");
@@ -165,6 +170,8 @@ let practiceScore = 0;
 let practiceAnswered = false;
 let currentMessage = "";
 let currentResult = null;
+let sessionLimitReached = false;
+let psychologyHistory = [];
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => {
@@ -328,7 +335,8 @@ function renderHistory() {
 function renderSession(state) {
   if (!state) return;
   usageCount.textContent = `${state.used}/${state.limit} lượt AI`;
-  checkButton.disabled = state.used >= state.limit;
+  sessionLimitReached = state.used >= state.limit;
+  updateNetworkState();
 
   const logs = Array.isArray(state.logs) ? state.logs : [];
   if (!logs.length) {
@@ -351,7 +359,10 @@ function renderSession(state) {
 
 function renderPsychology(result) {
   psychologyPanel.classList.add("hidden");
-  psychologyText.textContent = "";
+  psychologyHistory = [];
+  psychologyChat.innerHTML = "";
+  psychologyChatStatus.textContent = "";
+  psychologyChatInput.value = "";
   if (!result || !result.detective) return;
 
   if (result.detective.risk_level === "An toàn") {
@@ -359,11 +370,55 @@ function renderPsychology(result) {
   }
 
   psychologyPanel.classList.remove("hidden");
+  let opening;
   if (result.psychology && result.psychology.explanation) {
-    psychologyText.textContent = result.psychology.explanation;
-    return;
+    opening = result.psychology.explanation;
+  } else {
+    opening = result.psychology_error || "Cô đang ở đây. Bác hãy kể cụ thể mình đã làm gì sau khi nhận tin này nhé.";
   }
-  psychologyText.textContent = result.psychology_error || "Cô tâm lý chưa có phần giải thích cho tin này.";
+  appendPsychologyMessage("assistant", opening, false);
+}
+
+function appendPsychologyMessage(role, content, remember = true) {
+  if (remember) psychologyHistory.push({ role, content });
+  const message = document.createElement("div");
+  message.className = `chat-message chat-${role}`;
+  const speaker = role === "user" ? "Bác" : "Cô tâm lý";
+  message.innerHTML = `<strong>${speaker}</strong><span>${escapeHtml(content)}</span>`;
+  psychologyChat.appendChild(message);
+  psychologyChat.scrollTop = psychologyChat.scrollHeight;
+}
+
+async function sendPsychologyMessage(event) {
+  event.preventDefault();
+  const content = psychologyChatInput.value.trim();
+  if (!content || !currentResult || psychologySend.disabled) return;
+  appendPsychologyMessage("user", content);
+  psychologyChatInput.value = "";
+  psychologySend.disabled = true;
+  psychologyChatStatus.textContent = "Cô đang đọc và trả lời...";
+  try {
+    const response = await fetch("/psychology_chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        input_text: currentMessage,
+        detective: detectiveOf(currentResult),
+        history: psychologyHistory,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Cô chưa phản hồi được lúc này.");
+    appendPsychologyMessage("assistant", data.reply);
+    if (data.session) renderSession(data.session);
+  } catch (error) {
+    psychologyChatStatus.textContent = error.message;
+    return;
+  } finally {
+    psychologySend.disabled = false;
+  }
+  psychologyChatStatus.textContent = "";
+  psychologyChatInput.focus();
 }
 
 function renderSituation(result) {
@@ -438,7 +493,7 @@ function renderResult(message, result) {
 
 function showStatus(show) {
   statusPanel.classList.toggle("hidden", !show);
-  checkButton.disabled = show;
+  checkButton.disabled = show || !navigator.onLine || sessionLimitReached;
   if (!show && progressTimer) {
     clearInterval(progressTimer);
     progressTimer = null;
@@ -483,20 +538,38 @@ function showError(message) {
 }
 
 async function loadSession() {
-  const response = await fetch("/session_state");
-  if (response.ok) {
-    renderSession(await response.json());
+  try {
+    const response = await fetch("/session_state");
+    if (response.ok) renderSession(await response.json());
+  } catch {
+    updateNetworkState();
   }
+}
+
+function updateNetworkState() {
+  const offline = !navigator.onLine;
+  checkButton.disabled = offline || sessionLimitReached || !statusPanel.classList.contains("hidden");
+  checkButton.setAttribute("aria-disabled", String(checkButton.disabled));
+  networkStatus.textContent = offline ? "Đang ngoại tuyến — cần mạng để kiểm tra" : "";
+  checkButton.title = offline ? "Kết nối mạng để kiểm tra tin nhắn" : "";
 }
 
 async function submitCheck(event) {
   event.preventDefault();
+  if (!navigator.onLine) {
+    updateNetworkState();
+    return;
+  }
   const message = input.value.trim();
   if (!message) {
     showError("Vui lòng nhập nội dung tin nhắn cần kiểm tra.");
     return;
   }
 
+  resultPanel.classList.add("hidden");
+  psychologyPanel.classList.add("hidden");
+  situationPanel.classList.add("hidden");
+  responderPanel.classList.add("hidden");
   showStatus(true);
   startProgressStream();
   try {
@@ -691,7 +764,7 @@ function setupVoiceInput() {
 
   recognition.onend = () => {
     listening = false;
-    voiceToggle.textContent = "Bật đọc giọng nói";
+    voiceToggle.textContent = "🎙 Nói để nhập chữ";
   };
 
   voiceToggle.addEventListener("click", () => {
@@ -700,7 +773,7 @@ function setupVoiceInput() {
       return;
     }
     listening = true;
-    voiceToggle.textContent = "Tắt đọc giọng nói";
+    voiceToggle.textContent = "Dừng ghi âm";
     recognition.start();
   });
 }
@@ -806,7 +879,7 @@ clearHistoryButton.addEventListener("click", () => {
   renderHistory();
 });
 
-libraryOpen.addEventListener("click", () => {
+if (libraryOpen) libraryOpen.addEventListener("click", () => {
   window.location.href = "/library";
 });
 
@@ -825,7 +898,7 @@ libraryList.addEventListener("click", (event) => {
   if (id) showLibraryDetail(id);
 });
 
-practiceOpen.addEventListener("click", () => {
+if (practiceOpen) practiceOpen.addEventListener("click", () => {
   window.location.href = "/practice";
 });
 
@@ -904,7 +977,6 @@ function openFeature(feature) {
 featureMenuToggle.addEventListener("click", () => toggleMenu(featureMenu, featureMenuToggle));
 featureMenuClose.addEventListener("click", closeFeatureMenu);
 featureOverlay.addEventListener("click", closeFeatureMenu);
-settingsToggle.addEventListener("click", () => toggleMenu(settingsPanel, settingsToggle));
 featureMenu.addEventListener("click", (event) => {
   const feature = event.target.closest("[data-feature]")?.dataset.feature;
   if (feature) openFeature(feature);
@@ -941,6 +1013,12 @@ accessibilityRun.addEventListener("click", runAccessibilityAudit);
 
 input.addEventListener("input", updateCharCount);
 form.addEventListener("submit", submitCheck);
+psychologyChatForm.addEventListener("submit", sendPsychologyMessage);
+window.addEventListener("online", () => {
+  updateNetworkState();
+  loadSession();
+});
+window.addEventListener("offline", updateNetworkState);
 
 updateCharCount();
 renderHistory();
@@ -948,6 +1026,7 @@ loadSession();
 setupVoiceInput();
 renderLibrary();
 applySettings();
+updateNetworkState();
 
 if (document.body.dataset.page === "library") libraryPanel.classList.remove("hidden");
 if (document.body.dataset.page === "practice") {

@@ -9,8 +9,29 @@
   <body data-page="{{ active_page|default('checker') }}">
     <main class="app-shell">
       <nav class="top-menu" aria-label="Trình đơn chính">
-        <button type="button" id="feature-menu-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="feature-menu"><span aria-hidden="true">☰</span> Bảng điều khiển</button>
-        <button type="button" id="settings-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="settings-panel"><span aria-hidden="true">⚙</span> Cài đặt</button>
+        <a href="/" class="desktop-brand" aria-label="ScamCheck - Kiểm tra tin nhắn"><span aria-hidden="true">S</span><strong>ScamCheck</strong></a>
+        <div class="desktop-toolbar">
+          <a href="/" {% if active_page == 'checker' %}aria-current="page"{% endif %} title="Kiểm tra tin nhắn"><span aria-hidden="true">⌕</span><span class="toolbar-label">Kiểm tra</span></a>
+          <a href="/library" {% if active_page == 'library' %}aria-current="page"{% endif %} title="Thư viện lừa đảo"><span aria-hidden="true">▤</span><span class="toolbar-label">Thư viện</span></a>
+          <a href="/practice" {% if active_page == 'practice' %}aria-current="page"{% endif %} title="Luyện tập"><span aria-hidden="true">✓</span><span class="toolbar-label">Luyện tập</span></a>
+          <a href="/history" {% if active_page == 'history' %}aria-current="page"{% endif %} title="Lịch sử"><span aria-hidden="true">↶</span><span class="toolbar-label">Lịch sử</span></a>
+          <a href="/ai-log" {% if active_page == 'log' %}aria-current="page"{% endif %} title="Nhật ký AI"><span aria-hidden="true">⌁</span><span class="toolbar-label">Nhật ký AI</span></a>
+          <a href="/accessibility" {% if active_page == 'accessibility' %}aria-current="page"{% endif %} title="Kiểm tra tiếp cận"><span aria-hidden="true">Aa</span><span class="toolbar-label">Tiếp cận</span></a>
+          <a href="/settings" {% if active_page == 'settings' %}aria-current="page"{% endif %} title="Cài đặt"><span aria-hidden="true">⚙</span><span class="toolbar-label">Cài đặt</span></a>
+        </div>
+        <div class="mobile-menu-actions">
+          <button type="button" id="feature-menu-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="feature-menu"><span aria-hidden="true">☰</span> Bảng điều khiển</button>
+          <a href="/settings" id="settings-toggle" class="secondary menu-trigger button-link" {% if active_page == 'settings' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙</span> Cài đặt</a>
+        </div>
+      </nav>
+
+      <nav class="mobile-scroll-toolbar" aria-label="Truy cập nhanh tính năng">
+        <a href="/" {% if active_page == 'checker' %}aria-current="page"{% endif %}><span aria-hidden="true">⌕</span>Kiểm tra</a>
+        <a href="/library" {% if active_page == 'library' %}aria-current="page"{% endif %}><span aria-hidden="true">▤</span>Thư viện</a>
+        <a href="/practice" {% if active_page == 'practice' %}aria-current="page"{% endif %}><span aria-hidden="true">✓</span>Luyện tập</a>
+        <a href="/history" {% if active_page == 'history' %}aria-current="page"{% endif %}><span aria-hidden="true">↶</span>Lịch sử</a>
+        <a href="/ai-log" {% if active_page == 'log' %}aria-current="page"{% endif %}><span aria-hidden="true">⌁</span>Nhật ký</a>
+        <a href="/accessibility" {% if active_page == 'accessibility' %}aria-current="page"{% endif %}><span aria-hidden="true">Aa</span>Tiếp cận</a>
       </nav>
 
       <div id="feature-overlay" class="drawer-overlay hidden" aria-hidden="true"></div>
@@ -26,11 +47,12 @@
           <a href="/history" {% if active_page == 'history' %}aria-current="page"{% endif %}><span aria-hidden="true">↶</span><span>Lịch sử</span></a>
           <a href="/ai-log" {% if active_page == 'log' %}aria-current="page"{% endif %}><span aria-hidden="true">⌁</span><span>Nhật ký AI</span></a>
           <a href="/accessibility" {% if active_page == 'accessibility' %}aria-current="page"{% endif %}><span aria-hidden="true">Aa</span><span>Kiểm tra tiếp cận</span></a>
+          <a href="/settings" {% if active_page == 'settings' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙</span><span>Cài đặt</span></a>
         </nav>
       </aside>
 
-      <section id="settings-panel" class="settings-panel hidden" aria-labelledby="settings-title">
-        <h2 id="settings-title"><span aria-hidden="true">⚙</span> Cài đặt hiển thị</h2>
+      <section id="settings-panel" class="settings-panel" data-feature-section="settings" aria-labelledby="settings-title">
+        <div class="section-heading"><div><h2 id="settings-title"><span aria-hidden="true">⚙</span> Cài đặt hiển thị</h2><p class="summary">Các thay đổi được lưu trên thiết bị này.</p></div><a href="/" class="secondary button-link">Quay lại kiểm tra</a></div>
         <fieldset>
           <legend><span aria-hidden="true">◐</span> Giao diện</legend>
           <label><input type="radio" name="theme" value="light"> <span aria-hidden="true">☀</span> Sáng</label>
@@ -57,7 +79,10 @@
 
         <form id="check-form" class="input-panel">
           <label for="message-input">Nội dung tin nhắn</label>
-          <textarea id="message-input" name="input_text" rows="9" minlength="8" maxlength="5000" required placeholder="Dán nguyên văn tin nhắn, email hoặc nội dung nghi ngờ vào đây."></textarea>
+          <div class="text-input-wrap">
+            <textarea id="message-input" name="input_text" rows="9" minlength="8" maxlength="5000" required placeholder="Dán nguyên văn tin nhắn, email hoặc nội dung nghi ngờ vào đây."></textarea>
+            <button type="button" id="voice-toggle" class="voice-input-button secondary" aria-label="Chuyển âm thanh thành văn bản" title="Chuyển âm thanh thành văn bản"><span aria-hidden="true">🎙</span><span class="voice-label">Âm thanh thành chữ</span></button>
+          </div>
           <div class="counter-row">
             <span id="char-count">0/5000 ký tự</span>
             <span id="usage-count">0/20 lượt AI</span>
@@ -77,10 +102,8 @@
           </div>
 
           <div class="actions-row">
-            <button type="button" id="voice-toggle" class="secondary">Bật đọc giọng nói</button>
-            <button type="button" id="library-open" class="secondary">Thư viện lừa đảo</button>
-            <button type="button" id="practice-open" class="secondary">Luyện tập 10 câu</button>
-            <button type="submit" id="check-button" class="primary">Kiểm tra</button>
+            <span id="network-status" class="network-status" role="status" aria-live="polite"></span>
+            <button type="submit" id="check-button" class="primary check-action">Kiểm tra tin nhắn</button>
           </div>
         </form>
       </section>
@@ -106,7 +129,16 @@
 
         <div id="psychology-panel" class="psychology-panel hidden">
           <h2>Cô tâm lý</h2>
-          <p id="psychology-text"></p>
+          <p class="summary">Bác có thể kể cụ thể mình đã bấm gì, gửi gì hoặc chuyển tiền ra sao. Cô sẽ hỏi và hướng dẫn theo tình huống.</p>
+          <div id="psychology-chat" class="chat-thread" aria-live="polite"></div>
+          <form id="psychology-chat-form" class="chat-form">
+            <label for="psychology-chat-input">Kể thêm chuyện đã xảy ra</label>
+            <div class="chat-input-row">
+              <textarea id="psychology-chat-input" rows="2" maxlength="1500" placeholder="Ví dụ: Tôi đã bấm link và nhập số điện thoại, nhưng chưa nhập OTP."></textarea>
+              <button type="submit" id="psychology-send" class="primary">Gửi cho cô</button>
+            </div>
+            <span id="psychology-chat-status" class="summary" role="status"></span>
+          </form>
         </div>
 
         <div id="situation-panel" class="situation-panel hidden">

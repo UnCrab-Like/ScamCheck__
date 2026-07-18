@@ -46,11 +46,13 @@ def test_index_has_feature_and_display_settings():
     assert 'name="theme" value="light"' in page
     assert 'name="theme" value="dark"' in page
     assert 'id="accessibility-results"' in page
+    assert 'class="desktop-toolbar"' in page
+    assert 'class="mobile-scroll-toolbar"' in page
 
 
 @pytest.mark.parametrize(
     ("path", "page"),
-    [("/", "checker"), ("/library", "library"), ("/practice", "practice"), ("/history", "history"), ("/ai-log", "log"), ("/accessibility", "accessibility")],
+    [("/", "checker"), ("/library", "library"), ("/practice", "practice"), ("/history", "history"), ("/ai-log", "log"), ("/accessibility", "accessibility"), ("/settings", "settings")],
 )
 def test_features_have_distinct_web_pages(path, page):
     app.config.update(TESTING=True, SECRET_KEY="page-test")
@@ -388,6 +390,36 @@ def test_rescue_plan_route_sanitizes_ai_numbers(monkeypatch):
     assert response.status_code == 200
     assert "0999999999" not in str(data)
     assert "[số đã bị chặn]" in str(data)
+
+
+def test_psychology_chat_accepts_a_user_description(monkeypatch):
+    app.config.update(TESTING=True, SECRET_KEY="psychology-chat-test")
+
+    async def fake_chat(input_text, detective_result, history, started):
+        assert history[-1] == {"role": "user", "content": "Tôi đã bấm link nhưng chưa nhập OTP."}
+        return {"reply": "Cô hiểu rồi. Bác hãy đóng trang đó và không nhập thêm thông tin."}
+
+    monkeypatch.setattr("app.run_psychology_chat", fake_chat)
+    response = app.test_client().post(
+        "/psychology_chat",
+        json={
+            "input_text": "Bấm link xác minh tài khoản.",
+            "detective": {"risk_level": "Nguy hiểm"},
+            "history": [{"role": "user", "content": "Tôi đã bấm link nhưng chưa nhập OTP."}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "đóng trang" in response.get_json()["reply"]
+
+
+def test_psychology_chat_requires_a_user_message():
+    app.config.update(TESTING=True, SECRET_KEY="psychology-chat-validation")
+    response = app.test_client().post(
+        "/psychology_chat",
+        json={"input_text": "Tin nghi ngờ", "history": [{"role": "assistant", "content": "Bác kể thêm nhé."}]},
+    )
+    assert response.status_code == 400
 
 
 def test_share_card_route_returns_png():
