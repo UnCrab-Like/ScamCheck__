@@ -26,12 +26,14 @@
       </nav>
 
       <nav class="mobile-scroll-toolbar" aria-label="Truy cập nhanh tính năng">
-        <a href="/" {% if active_page == 'checker' %}aria-current="page"{% endif %}><span aria-hidden="true">⌕</span>Kiểm tra</a>
-        <a href="/library" {% if active_page == 'library' %}aria-current="page"{% endif %}><span aria-hidden="true">▤</span>Thư viện</a>
-        <a href="/practice" {% if active_page == 'practice' %}aria-current="page"{% endif %}><span aria-hidden="true">✓</span>Luyện tập</a>
-        <a href="/history" {% if active_page == 'history' %}aria-current="page"{% endif %}><span aria-hidden="true">↶</span>Lịch sử</a>
-        <a href="/ai-log" {% if active_page == 'log' %}aria-current="page"{% endif %}><span aria-hidden="true">⌁</span>Nhật ký</a>
-        <a href="/accessibility" {% if active_page == 'accessibility' %}aria-current="page"{% endif %}><span aria-hidden="true">Aa</span>Tiếp cận</a>
+        <div class="mobile-scroll-track">
+          <a href="/" {% if active_page == 'checker' %}aria-current="page"{% endif %}><span aria-hidden="true">⌕</span>Kiểm tra</a>
+          <a href="/library" {% if active_page == 'library' %}aria-current="page"{% endif %}><span aria-hidden="true">▤</span>Thư viện</a>
+          <a href="/practice" {% if active_page == 'practice' %}aria-current="page"{% endif %}><span aria-hidden="true">✓</span>Luyện tập</a>
+          <a href="/history" {% if active_page == 'history' %}aria-current="page"{% endif %}><span aria-hidden="true">↶</span>Lịch sử</a>
+          <a href="/ai-log" {% if active_page == 'log' %}aria-current="page"{% endif %}><span aria-hidden="true">⌁</span>Nhật ký</a>
+          <a href="/accessibility" {% if active_page == 'accessibility' %}aria-current="page"{% endif %}><span aria-hidden="true">Aa</span>Tiếp cận</a>
+        </div>
       </nav>
 
       <div id="feature-overlay" class="drawer-overlay hidden" aria-hidden="true"></div>
