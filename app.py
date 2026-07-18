@@ -34,7 +34,7 @@ def load_local_env() -> None:
 load_local_env()
 
 RISK_LEVELS = ("An toàn", "Nghi ngờ", "Nguy hiểm")
-MAX_AI_CALLS_PER_SESSION = 10
+MAX_AI_CALLS_PER_SESSION = 20
 AI_TIMEOUT_SECONDS = 6
 REQUEST_BUDGET_SECONDS = 20
 MAX_INPUT_CHARS = 5000

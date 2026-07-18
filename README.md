@@ -9,7 +9,7 @@ ScamCheck is a demo Flask app for checking suspicious messages with Gemini. It i
 - Risk badge colors: `An toàn` green, `Nghi ngờ` yellow, `Nguy hiểm` red.
 - Quote highlighting in the original message when Gemini returns matching excerpts.
 - 10-item browser history saved in `localStorage`; opening history does not call Gemini again.
-- Per-session AI limit: 10 calls, 30-second timeout per call, retry with exponential backoff for rate limits and temporary server errors.
+- Per-session AI limit: 20 calls, 30-second timeout per call, retry with exponential backoff for rate limits and temporary server errors.
 - In-session AI call log with time, input length, and result summary.
 - Defensive parser and edge-case tests so malformed AI output does not break the app.
 - Voice input button using browser speech recognition when available; on iPhone Safari, users can use the keyboard microphone fallback.

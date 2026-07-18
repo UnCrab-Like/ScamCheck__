@@ -55,6 +55,12 @@ def test_health_endpoint_is_ready_for_host_monitoring():
     assert response.get_json() == {"status": "ok"}
 
 
+def test_session_exposes_twenty_call_limit():
+    app.config.update(TESTING=True, SECRET_KEY="limit-test")
+    state = app.test_client().get("/session_state").get_json()
+    assert state["limit"] == 20
+
+
 def test_stream_parser_emits_real_chunks(monkeypatch):
     class FakeResponse:
         status_code = 200
