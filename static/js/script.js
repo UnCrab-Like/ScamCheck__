@@ -124,6 +124,9 @@ const clearHistoryButton = document.querySelector("#clear-history");
 const callLog = document.querySelector("#call-log");
 const checkButton = document.querySelector("#check-button");
 const networkStatus = document.querySelector("#network-status");
+const workbench = document.querySelector(".workbench");
+const detectiveIntro = document.querySelector("#detective-intro");
+const detectiveFeatures = document.querySelector("#detective-features");
 const voiceToggle = document.querySelector("#voice-toggle");
 const psychologyPanel = document.querySelector("#psychology-panel");
 const psychologyChat = document.querySelector("#psychology-chat");
@@ -492,8 +495,10 @@ function renderResult(message, result) {
 }
 
 function showStatus(show) {
-  statusPanel.classList.toggle("hidden", !show);
-  checkButton.disabled = show || !navigator.onLine || sessionLimitReached;
+  workbench.classList.toggle("is-analyzing", show);
+  // Keep the analysis UI out of sight: the input box remains the sole focus.
+  statusPanel.classList.add("hidden");
+  updateCheckerState();
   if (!show && progressTimer) {
     clearInterval(progressTimer);
     progressTimer = null;
@@ -547,11 +552,31 @@ async function loadSession() {
 }
 
 function updateNetworkState() {
+  updateCheckerState();
+}
+
+function updateCheckerState() {
   const offline = !navigator.onLine;
-  checkButton.disabled = offline || sessionLimitReached || !statusPanel.classList.contains("hidden");
+  const empty = !input.value.trim();
+  const analyzing = workbench.classList.contains("is-analyzing");
+  const showDetective = !empty && !analyzing;
+
+  detectiveIntro.classList.toggle("hidden", !showDetective);
+  detectiveFeatures.classList.toggle("hidden", !showDetective);
+  checkButton.disabled = empty || offline || sessionLimitReached || analyzing;
   checkButton.setAttribute("aria-disabled", String(checkButton.disabled));
-  networkStatus.textContent = offline ? "Đang ngoại tuyến — cần mạng để kiểm tra" : "";
-  checkButton.title = offline ? "Kết nối mạng để kiểm tra tin nhắn" : "";
+  if (offline) {
+    networkStatus.textContent = "Đang ngoại tuyến — cần Wi-Fi hoặc dữ liệu di động để kiểm tra";
+  } else if (analyzing) {
+    networkStatus.textContent = "Đang phân tích...";
+  } else {
+    networkStatus.textContent = "";
+  }
+  checkButton.title = offline
+    ? "Kết nối Wi-Fi hoặc dữ liệu di động để kiểm tra tin nhắn"
+    : empty
+      ? "Nhập tin nhắn trước khi kiểm tra"
+      : "";
 }
 
 async function submitCheck(event) {
@@ -562,7 +587,7 @@ async function submitCheck(event) {
   }
   const message = input.value.trim();
   if (!message) {
-    showError("Vui lòng nhập nội dung tin nhắn cần kiểm tra.");
+    updateCheckerState();
     return;
   }
 
@@ -1011,7 +1036,10 @@ largeTextSetting.addEventListener("change", () => {
 
 accessibilityRun.addEventListener("click", runAccessibilityAudit);
 
-input.addEventListener("input", updateCharCount);
+input.addEventListener("input", () => {
+  updateCharCount();
+  updateCheckerState();
+});
 form.addEventListener("submit", submitCheck);
 psychologyChatForm.addEventListener("submit", sendPsychologyMessage);
 window.addEventListener("online", () => {

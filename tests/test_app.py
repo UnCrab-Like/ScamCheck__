@@ -51,6 +51,9 @@ def test_index_has_feature_and_display_settings():
     assert 'id="feature-menu-toggle"' in page
     assert 'aria-controls="feature-menu"' in page
     assert "Trình đơn" in page
+    assert 'id="detective-intro" class="intro hidden"' in page
+    assert 'id="detective-features" class="trust-row hidden"' in page
+    assert 'id="check-button" class="primary check-action" disabled aria-disabled="true"' in page
 
 
 @pytest.mark.parametrize(

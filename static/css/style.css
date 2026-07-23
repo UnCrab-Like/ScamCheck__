@@ -519,6 +519,16 @@ textarea {
   margin-left: auto;
 }
 
+/* During analysis, keep attention on the submitted search box. */
+.workbench.is-analyzing .intro,
+.workbench.is-analyzing .trust-row,
+.workbench.is-analyzing .sample-heading,
+.workbench.is-analyzing .sample-grid,
+.workbench.is-analyzing .counter-row,
+.workbench.is-analyzing .voice-input-button {
+  display: none;
+}
+
 .counter-row,
 .actions-row,
 .section-heading {

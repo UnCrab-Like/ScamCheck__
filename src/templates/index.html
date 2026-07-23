@@ -54,7 +54,7 @@
       </section>
 
       <section class="workbench" aria-labelledby="app-title">
-        <div class="intro">
+        <div id="detective-intro" class="intro hidden">
           <div class="hero-icon" aria-hidden="true">S</div>
           <div>
             <p class="eyebrow"><span aria-hidden="true">●</span> ScamCheck đang sẵn sàng</p>
@@ -62,7 +62,7 @@
             <p class="hero-copy">Dán một tin nhắn để AI và lớp luật an toàn cùng soi dấu hiệu đáng ngờ.</p>
           </div>
         </div>
-        <div class="trust-row" aria-label="Điểm nổi bật">
+        <div id="detective-features" class="trust-row hidden" aria-label="Điểm nổi bật">
           <span>✦ Phân tích AI</span>
           <span>⌁ Soi đường dẫn</span>
           <span>✓ Luật an toàn</span>
@@ -94,7 +94,7 @@
 
           <div class="actions-row">
             <span id="network-status" class="network-status" role="status" aria-live="polite"></span>
-            <button type="submit" id="check-button" class="primary check-action">Kiểm tra tin nhắn</button>
+            <button type="submit" id="check-button" class="primary check-action" disabled aria-disabled="true">Kiểm tra tin nhắn</button>
           </div>
         </form>
       </section>
