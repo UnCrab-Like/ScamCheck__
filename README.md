@@ -55,6 +55,18 @@ python app.py
 
 Open `http://127.0.0.1:5000/`.
 
+## Backend Structure
+
+- `app.py`: Flask application, routes, Gemini transport, and three-role orchestration.
+- `scamcheck/config.py`: resource limits, model endpoints, response schemas, and safe defaults.
+- `scamcheck/prompts.py`: isolated prompts for Thám tử, Cô tâm lý, and Người ứng cứu.
+- `scamcheck/parsing.py`: defensive structured-response parsers.
+- `scamcheck/analysis.py`: deterministic URL, spoofed-domain, rule, and risk-floor analysis.
+- `scamcheck/hotlines.py`: verified hotline loading, phone allow-list enforcement, and four crisis fallbacks.
+- `scamcheck/share_card.py`: PNG summary-card and QR rendering.
+
+`app.py` re-exports the established service functions used by the evaluation scripts, so the documented commands remain backward compatible.
+
 ## Test
 
 ```bash

@@ -120,6 +120,37 @@ def test_transcription_rejects_missing_audio():
     assert "bản ghi" in response.get_json()["error"].lower()
 
 
+def test_transcription_encodes_audio_and_returns_text(monkeypatch):
+    """Cover the successful audio path, including base64 encoding."""
+
+    class FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "candidates": [
+                    {"content": {"parts": [{"text": "Tin nhắn cần kiểm tra."}]}}
+                ]
+            }
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr("app.requests.post", lambda *args, **kwargs: FakeResponse())
+    app.config.update(TESTING=True, SECRET_KEY="voice-success-test")
+
+    response = app.test_client().post(
+        "/transcribe",
+        data={"audio": (io.BytesIO(b"fake-audio"), "recording.webm")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["transcript"] == "Tin nhắn cần kiểm tra."
+    assert response.get_json()["session"]["used"] == 1
+
+
 def test_stream_route_emits_chunk_and_final_result(monkeypatch):
     app.config.update(TESTING=True, SECRET_KEY="stream-test")
 
