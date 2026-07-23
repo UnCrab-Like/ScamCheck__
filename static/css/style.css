@@ -87,11 +87,15 @@ textarea {
 
 button {
   min-height: 48px;
+  max-width: 100%;
   border: 1px solid var(--blue);
   border-radius: 8px;
   padding: 10px 16px;
   cursor: pointer;
   font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
 }
 
 button:focus-visible,
@@ -366,6 +370,7 @@ body.focused-mode [data-feature-section].feature-active {
 
 .button-link {
   display: inline-flex;
+  max-width: 100%;
   min-height: 48px;
   align-items: center;
   justify-content: center;
@@ -375,6 +380,9 @@ body.focused-mode [data-feature-section].feature-active {
   color: var(--blue);
   text-decoration: none;
   font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
 }
 
 body[data-page] .workbench,
@@ -519,6 +527,19 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.section-heading {
+  margin-bottom: 20px;
+}
+
+.section-heading h2,
+.section-heading p:last-child {
+  margin-bottom: 0;
+}
+
+.section-heading .button-link {
+  flex: 0 0 auto;
 }
 
 .counter-row {
@@ -804,10 +825,18 @@ body.high-contrast .legal-footer {
 }
 
 .library-filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.library-filters button {
+  width: 100%;
+}
+
+.library-item button {
+  margin-top: 4px;
 }
 
 .situation-panel,
@@ -856,7 +885,7 @@ body.high-contrast .legal-footer {
 
 .history-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -931,8 +960,23 @@ body.high-contrast .legal-footer {
     width: 92%;
   }
 
-  .section-heading button {
+  .section-heading button,
+  .section-heading .button-link {
     width: 100%;
+  }
+
+  .section-heading .button-link {
+    flex-basis: 100%;
+  }
+
+  .library-filters {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .history-actions button,
+  .practice-card .actions-row button {
+    flex: 1 1 100%;
   }
 }
 
