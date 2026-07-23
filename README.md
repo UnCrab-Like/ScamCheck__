@@ -67,6 +67,10 @@ Open `http://127.0.0.1:5000/`.
 
 `app.py` re-exports the established service functions used by the evaluation scripts, so the documented commands remain backward compatible.
 
+## Feature Pages and Navigation
+
+Each primary feature has a dedicated URL: `/`, `/library`, `/practice`, `/history`, `/ai-log`, `/accessibility`, and `/settings`. Desktop layouts keep a persistent left sidebar, while screens at 820 pixels or below use a touch-friendly navigation drawer and a direct Settings shortcut.
+
 ## Test
 
 ```bash

@@ -47,6 +47,10 @@ def test_index_has_feature_and_display_settings():
     assert 'name="theme" value="dark"' in page
     assert 'id="accessibility-results"' in page
     assert 'class="desktop-toolbar"' in page
+    assert '<header class="top-menu">' in page
+    assert 'id="feature-menu-toggle"' in page
+    assert 'aria-controls="feature-menu"' in page
+    assert "Trình đơn" in page
 
 
 @pytest.mark.parametrize(
@@ -57,7 +61,9 @@ def test_features_have_distinct_web_pages(path, page):
     app.config.update(TESTING=True, SECRET_KEY="page-test")
     response = app.test_client().get(path)
     assert response.status_code == 200
-    assert f'data-page="{page}"' in response.get_data(as_text=True)
+    html = response.get_data(as_text=True)
+    assert f'data-page="{page}"' in html
+    assert f'href="{path}" aria-current="page"' in html
 
 
 def test_health_endpoint_is_ready_for_host_monitoring():

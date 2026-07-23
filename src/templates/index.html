@@ -8,9 +8,9 @@
   </head>
   <body data-page="{{ active_page|default('checker') }}">
     <main class="app-shell">
-      <nav class="top-menu" aria-label="Trình đơn chính">
+      <header class="top-menu">
         <a href="/" class="desktop-brand" aria-label="ScamCheck - Kiểm tra tin nhắn"><span aria-hidden="true">S</span><strong>ScamCheck</strong></a>
-        <div class="desktop-toolbar">
+        <nav class="desktop-toolbar" aria-label="Trình đơn chính trên máy tính">
           <a href="/" {% if active_page == 'checker' %}aria-current="page"{% endif %} title="Kiểm tra tin nhắn"><span aria-hidden="true">⌕</span><span class="toolbar-label">Kiểm tra</span></a>
           <a href="/library" {% if active_page == 'library' %}aria-current="page"{% endif %} title="Thư viện lừa đảo"><span aria-hidden="true">▤</span><span class="toolbar-label">Thư viện</span></a>
           <a href="/practice" {% if active_page == 'practice' %}aria-current="page"{% endif %} title="Luyện tập"><span aria-hidden="true">✓</span><span class="toolbar-label">Luyện tập</span></a>
@@ -18,12 +18,12 @@
           <a href="/ai-log" {% if active_page == 'log' %}aria-current="page"{% endif %} title="Nhật ký AI"><span aria-hidden="true">⌁</span><span class="toolbar-label">Nhật ký AI</span></a>
           <a href="/accessibility" {% if active_page == 'accessibility' %}aria-current="page"{% endif %} title="Kiểm tra tiếp cận"><span aria-hidden="true">Aa</span><span class="toolbar-label">Tiếp cận</span></a>
           <a href="/settings" {% if active_page == 'settings' %}aria-current="page"{% endif %} title="Cài đặt"><span aria-hidden="true">⚙</span><span class="toolbar-label">Cài đặt</span></a>
-        </div>
+        </nav>
         <div class="mobile-menu-actions">
-          <button type="button" id="feature-menu-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="feature-menu"><span aria-hidden="true">☰</span> Bảng điều khiển</button>
+          <button type="button" id="feature-menu-toggle" class="secondary menu-trigger" aria-expanded="false" aria-controls="feature-menu"><span aria-hidden="true">☰</span> Trình đơn</button>
           <a href="/settings" id="settings-toggle" class="secondary menu-trigger button-link" {% if active_page == 'settings' %}aria-current="page"{% endif %}><span aria-hidden="true">⚙</span> Cài đặt</a>
         </div>
-      </nav>
+      </header>
 
       <div id="feature-overlay" class="drawer-overlay hidden" aria-hidden="true"></div>
       <aside id="feature-menu" class="menu-panel dashboard-drawer hidden" aria-label="Bảng điều khiển">
