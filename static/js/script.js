@@ -567,6 +567,35 @@ function updateCheckerState() {
       : "";
 }
 
+function waitForConnection(timeoutMs = 2500) {
+  if (navigator.onLine) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    window.addEventListener("online", () => {
+      clearTimeout(timer);
+      resolve();
+    }, { once: true });
+  });
+}
+
+async function fetchJsonWithNetworkRetry(url, options, maxRetries = 2) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      return { response, data };
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxRetries) break;
+      networkStatus.textContent = `Mạng chập chờn — đang kết nối lại (${attempt + 1}/${maxRetries})...`;
+      await waitForConnection();
+      await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 async function submitCheck(event) {
   event.preventDefault();
   checkerError = "";
@@ -586,70 +615,30 @@ async function submitCheck(event) {
   responderPanel.classList.add("hidden");
   showStatus(true);
   startProgressStream();
-  const controller = new AbortController();
-  const stopWhenOffline = () => controller.abort();
-  window.addEventListener("offline", stopWhenOffline, { once: true });
   try {
     const cached = findClientCache(message);
     if (cached) {
       renderResult(message, cached.result);
       return;
     }
-    const response = await fetch("/scam_check_stream", {
+    const { response, data } = await fetchJsonWithNetworkRetry("/scam_check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input_text: message }),
-      signal: controller.signal,
     });
     if (!response.ok) {
-      const data = await response.json();
       showError(data.error || "Không thể kiểm tra lúc này.", true);
       return;
     }
-    if (!response.body) throw new Error("Trình duyệt không hỗ trợ phản hồi theo dòng.");
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let finalResult = null;
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const blocks = buffer.split("\n\n");
-      buffer = blocks.pop() || "";
-      blocks.forEach((block) => {
-        const eventName = block.match(/^event:\s*(.+)$/m)?.[1];
-        const dataLine = block.match(/^data:\s*(.+)$/m)?.[1];
-        if (!eventName || !dataLine) return;
-        const data = JSON.parse(dataLine);
-        if (eventName === "chunk") {
-          if (progressTimer) clearInterval(progressTimer);
-          progressTimer = null;
-          statusPanel.querySelector("p").textContent = "Gemini đang trả kết quả...";
-          streamPreview.classList.remove("hidden");
-          streamPreview.textContent += data.text;
-        }
-        if (eventName === "result") finalResult = data.result;
-        if (eventName === "error") throw new Error(data.message);
-      });
-    }
-    if (!finalResult) throw new Error("Luồng Gemini kết thúc trước khi có kết quả.");
-    const finalizeResponse = await fetch("/stream_finalize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input_text: message, result: finalResult }),
-      signal: controller.signal,
-    });
-    if (!finalizeResponse.ok) throw new Error("Không thể hoàn tất kết quả kiểm tra.");
-    renderSession((await finalizeResponse.json()).session);
+    const finalResult = data.result;
+    if (!finalResult) throw new Error("Gemini không trả kết quả hoàn chỉnh.");
+    renderSession(data.session);
     renderResult(message, finalResult);
     setClientCache(message, finalResult);
     addHistory(message, finalResult);
   } catch {
     showError("Mạng không ổn định hoặc máy chủ chưa chạy. Vui lòng thử lại.", true);
   } finally {
-    window.removeEventListener("offline", stopWhenOffline);
     showStatus(false);
     if (navigator.onLine) loadSession();
   }
