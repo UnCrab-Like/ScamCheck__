@@ -12,6 +12,11 @@
     {"id": "safe-greeting", "category": "Sinh hoạt", "expected_risk": "An toàn", "text": "Chúc bác sinh nhật vui vẻ và nhiều sức khỏe."},
     {"id": "safe-document", "category": "Công việc", "expected_risk": "An toàn", "text": "Tài liệu đã được in và đặt ở quầy lễ tân."},
     {"id": "safe-pickup", "category": "Sinh hoạt", "expected_risk": "An toàn", "text": "Xe sẽ đón bác lúc 8 giờ ở cổng chính."},
+    {"id": "safe-bank-story", "category": "Ngân hàng hợp lệ", "expected_risk": "An toàn", "text": "Hôm nay con đi ngân hàng làm lại thẻ, tối về con kể bác nghe."},
+    {"id": "safe-otp-warning", "category": "OTP", "expected_risk": "An toàn", "text": "Lưu ý không chia sẻ OTP cho bất kỳ ai, kể cả người tự xưng nhân viên."},
+    {"id": "safe-water-urgency", "category": "Thông báo thời gian", "expected_risk": "An toàn", "text": "Khu nhà sẽ cắt nước trong 30 phút để sửa ống bị vỡ."},
+    {"id": "safe-delivery-door", "category": "Giao hàng", "expected_risk": "An toàn", "text": "Shipper đang ở cổng, bác ra nhận hàng giúp con nhé."},
+    {"id": "safe-official-bank-link", "category": "Trang chính thức", "expected_risk": "An toàn", "text": "Thông tin giờ làm việc được đăng tại https://vietcombank.com.vn."},
 
     {"id": "suspect-prize", "category": "Trúng thưởng", "expected_risk": "Nghi ngờ", "text": "Chúc mừng bác đã trúng thưởng, trả lời email qua@tangqua.example."},
     {"id": "suspect-verify-link", "category": "Trang giả mạo", "expected_risk": "Nghi ngờ", "text": "Xác minh hồ sơ tại https://account-check.example trước tối nay."},

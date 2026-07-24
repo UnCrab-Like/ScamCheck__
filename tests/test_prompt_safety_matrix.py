@@ -61,7 +61,7 @@ def test_offline_benchmark_returns_score_and_category_breakdown():
     assert result["score"] == result["total"] == len(BENCHMARK_CASES)
     assert result["percentage"] == 100
     assert result["ai_calls_used"] == 0
-    assert len(result["categories"]) >= 10
+    assert len(result["categories"]) >= 15
     assert all(item["category"] and item["total"] for item in result["categories"])
 
 

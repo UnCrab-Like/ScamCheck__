@@ -183,6 +183,23 @@ def rule_indicators(input_text: str, resolve_shortlinks: bool = False) -> list[d
     for pattern, label, explanation in RULES:
         match = re.search(pattern, input_text, re.IGNORECASE)
         if match:
+            lowered = input_text.lower()
+            if label == "Yêu cầu mã xác thực" and re.search(
+                r"(không|khong|đừng|dung|tuyệt đối không|never|do not)"
+                r".{0,35}(chia sẻ|chia se|cung cấp|cung cap|đọc|doc|gửi|gui)"
+                r".{0,20}(otp|mã xác thực|ma xac thuc|verification code)",
+                lowered,
+                re.IGNORECASE,
+            ):
+                continue
+            if label == "Tạo áp lực gấp gáp" and not re.search(
+                r"(tiền|tien|phí|phi|thanh toán|thanh toan|nhận|nhan|hoàn|hoan|"
+                r"xác minh|xac minh|otp|tài khoản|tai khoan|link|https?://|"
+                r"trúng|trung|hồ sơ|ho so)",
+                lowered,
+                re.IGNORECASE,
+            ):
+                continue
             indicators.append({"label": label, "quote": input_text[match.start():match.end()], "explanation": explanation})
     for link in analyze_links(input_text, resolve_shortlinks):
         if link["shortened"]:
@@ -206,8 +223,8 @@ def baseline_risk_level(input_text: str) -> str:
         return "Nghi ngờ"
     text = input_text.lower()
     suspicious_terms = (
-        "trúng thưởng", "trung thuong", "xác minh", "xac minh", "ngân hàng",
-        "ngan hang", "giao hàng", "giao hang", "bit.ly", "http://", "https://",
+        "trúng thưởng", "trung thuong", "xác minh", "xac minh",
+        "hoàn tiền", "hoan tien", "bit.ly",
         "gui link", "gửi link", "link thanh toan", "link thanh toán",
     )
     return "Nghi ngờ" if any(term in text for term in suspicious_terms) else "An toàn"
