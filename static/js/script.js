@@ -177,6 +177,7 @@ let currentMessage = "";
 let currentResult = null;
 let sessionLimitReached = false;
 let psychologyHistory = [];
+let checkerError = "";
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => {
@@ -521,27 +522,12 @@ function startProgressStream() {
   }, 750);
 }
 
-function showError(message) {
-  renderResult(input.value, {
-    detective: {
-      risk_level: "Nghi ngờ",
-      summary: message,
-      indicators: [
-        {
-          label: "Không hoàn tất kiểm tra",
-          quote: "",
-          explanation: message,
-        },
-      ],
-      actions: [
-        "Không bấm liên kết trong tin nhắn này.",
-        "Xác minh qua website hoặc số điện thoại chính thức.",
-        "Thử lại sau nếu vẫn cần kết quả AI.",
-      ],
-    },
-    psychology: null,
-    psychology_error: null,
-  });
+function showError(message, invalidateResult = false) {
+  // A transport or server failure is not a risk classification. Showing the
+  // default suspicious card here made safe and dangerous messages look alike.
+  checkerError = message;
+  networkStatus.textContent = checkerError;
+  if (invalidateResult) resultPanel.classList.add("hidden");
 }
 
 async function loadSession() {
@@ -572,7 +558,7 @@ function updateCheckerState() {
   } else if (analyzing) {
     networkStatus.textContent = "Đang phân tích...";
   } else {
-    networkStatus.textContent = "";
+    networkStatus.textContent = checkerError;
   }
   checkButton.title = offline
     ? "Kết nối Wi-Fi hoặc dữ liệu di động để kiểm tra tin nhắn"
@@ -583,6 +569,7 @@ function updateCheckerState() {
 
 async function submitCheck(event) {
   event.preventDefault();
+  checkerError = "";
   if (!navigator.onLine) {
     updateNetworkState();
     return;
@@ -599,6 +586,9 @@ async function submitCheck(event) {
   responderPanel.classList.add("hidden");
   showStatus(true);
   startProgressStream();
+  const controller = new AbortController();
+  const stopWhenOffline = () => controller.abort();
+  window.addEventListener("offline", stopWhenOffline, { once: true });
   try {
     const cached = findClientCache(message);
     if (cached) {
@@ -609,10 +599,11 @@ async function submitCheck(event) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input_text: message }),
+      signal: controller.signal,
     });
     if (!response.ok) {
       const data = await response.json();
-      showError(data.error || "Không thể kiểm tra lúc này.");
+      showError(data.error || "Không thể kiểm tra lúc này.", true);
       return;
     }
     if (!response.body) throw new Error("Trình duyệt không hỗ trợ phản hồi theo dòng.");
@@ -644,20 +635,23 @@ async function submitCheck(event) {
       });
     }
     if (!finalResult) throw new Error("Luồng Gemini kết thúc trước khi có kết quả.");
-    renderResult(message, finalResult);
-    setClientCache(message, finalResult);
-    addHistory(message, finalResult);
     const finalizeResponse = await fetch("/stream_finalize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input_text: message, result: finalResult }),
+      signal: controller.signal,
     });
-    if (finalizeResponse.ok) renderSession((await finalizeResponse.json()).session);
+    if (!finalizeResponse.ok) throw new Error("Không thể hoàn tất kết quả kiểm tra.");
+    renderSession((await finalizeResponse.json()).session);
+    renderResult(message, finalResult);
+    setClientCache(message, finalResult);
+    addHistory(message, finalResult);
   } catch {
-    showError("Mạng không ổn định hoặc máy chủ chưa chạy. Vui lòng thử lại.");
+    showError("Mạng không ổn định hoặc máy chủ chưa chạy. Vui lòng thử lại.", true);
   } finally {
+    window.removeEventListener("offline", stopWhenOffline);
     showStatus(false);
-    loadSession();
+    if (navigator.onLine) loadSession();
   }
 }
 
@@ -1092,6 +1086,7 @@ largeTextSetting.addEventListener("change", () => {
 accessibilityRun.addEventListener("click", runAccessibilityAudit);
 
 input.addEventListener("input", () => {
+  checkerError = "";
   updateCharCount();
   updateCheckerState();
 });
