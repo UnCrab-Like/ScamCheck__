@@ -148,6 +148,8 @@ const practiceText = document.querySelector("#practice-text");
 const practiceFeedback = document.querySelector("#practice-feedback");
 const practiceNext = document.querySelector("#practice-next");
 const practiceSummary = document.querySelector("#practice-summary");
+const benchmarkRun = document.querySelector("#benchmark-run");
+const benchmarkResults = document.querySelector("#benchmark-results");
 const situationPanel = document.querySelector("#situation-panel");
 const responderPanel = document.querySelector("#responder-panel");
 const responderSteps = document.querySelector("#responder-steps");
@@ -869,6 +871,57 @@ function finishPractice() {
   practiceNext.classList.add("hidden");
 }
 
+async function runOfflineBenchmark() {
+  benchmarkRun.disabled = true;
+  benchmarkRun.textContent = "Đang chấm điểm...";
+  benchmarkResults.classList.remove("hidden");
+  benchmarkResults.innerHTML = "<p>Đang chạy các luật an toàn cục bộ.</p>";
+  try {
+    const response = await fetch("/offline_benchmark", { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Không chạy được kiểm thử.");
+    const categoryRows = data.categories
+      .map(
+        (item) => `
+          <tr>
+            <th scope="row">${escapeHtml(item.category)}</th>
+            <td>${item.correct}/${item.total}</td>
+            <td>${item.percentage}%</td>
+          </tr>
+        `
+      )
+      .join("");
+    const failures = data.cases.filter((item) => !item.correct);
+    benchmarkResults.innerHTML = `
+      <div class="benchmark-score">
+        <strong>${data.score}/${data.total}</strong>
+        <span>${data.percentage}% chính xác</span>
+      </div>
+      <p class="summary">Đã dùng ${data.ai_calls_used} lượt AI. Phiên vẫn ở mức ${data.session_ai_calls_after}/${data.session_ai_limit} lượt.</p>
+      <table class="benchmark-table">
+        <caption>Điểm theo danh mục</caption>
+        <thead><tr><th>Danh mục</th><th>Đúng</th><th>Tỷ lệ</th></tr></thead>
+        <tbody>${categoryRows}</tbody>
+      </table>
+      ${
+        failures.length
+          ? `<details><summary>${failures.length} ca chưa đúng</summary><ul>${failures
+              .map(
+                (item) =>
+                  `<li><strong>${escapeHtml(item.category)}</strong>: dự đoán ${escapeHtml(item.predicted_risk)}, mong đợi ${escapeHtml(item.expected_risk)} — ${escapeHtml(item.text)}</li>`
+              )
+              .join("")}</ul></details>`
+          : "<p><strong>Tất cả ca kiểm thử đều đạt.</strong></p>"
+      }
+    `;
+  } catch (error) {
+    benchmarkResults.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    benchmarkRun.disabled = false;
+    benchmarkRun.textContent = "Chạy lại kiểm thử";
+  }
+}
+
 document.querySelectorAll(".sample-btn").forEach((button) => {
   button.addEventListener("click", () => {
     input.value = samples[button.dataset.sample] || "";
@@ -945,6 +998,8 @@ practiceNext.addEventListener("click", () => {
   }
   renderPractice();
 });
+
+if (benchmarkRun) benchmarkRun.addEventListener("click", runOfflineBenchmark);
 
 situationPanel.addEventListener("click", (event) => {
   const situation = event.target.dataset.situation;

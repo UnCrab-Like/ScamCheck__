@@ -25,6 +25,7 @@ from scamcheck.analysis import (
     risk_rank,
     rule_indicators,
 )
+from scamcheck.benchmark import run_offline_benchmark
 from scamcheck.config import (
     AI_TIMEOUT_SECONDS,
     DEFAULT_RESULT,
@@ -451,6 +452,17 @@ def health():
 def session_state():
     """Expose resource usage and call logs for the current browser session."""
     return jsonify(get_session_state())
+
+
+@app.route("/offline_benchmark", methods=["POST"])
+def offline_benchmark():
+    """Run the categorized rule benchmark without spending any AI calls."""
+    before = get_session_state()["used"]
+    result = run_offline_benchmark()
+    result["session_ai_calls_before"] = before
+    result["session_ai_calls_after"] = get_session_state()["used"]
+    result["session_ai_limit"] = MAX_AI_CALLS_PER_SESSION
+    return jsonify(result)
 
 
 @app.route("/transcribe", methods=["POST"])

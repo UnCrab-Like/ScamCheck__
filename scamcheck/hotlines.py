@@ -40,6 +40,14 @@ def hotline_contacts(contact_type: str | None = None) -> list[dict[str, str]]:
     return contacts
 
 
+def contact_label(contact: dict[str, str]) -> str:
+    """Render a contact once when its name already contains its short number."""
+    phone = str(contact["phone"])
+    if phone in str(contact["name"]):
+        return str(contact["name"])
+    return f"{contact['name']} {phone}"
+
+
 def sanitize_phone_hallucinations(text: str) -> str:
     """Block any displayed phone number that is not in the verified table."""
     allowed = allowed_phone_numbers()
@@ -75,14 +83,14 @@ def fallback_rescue_steps(situation: str) -> list[dict[str, str]]:
     police = next(item for item in hotline_contacts("police") if item["id"] == "police_113")
     ais_156 = next(item for item in hotline_contacts("information_security") if item["id"] == "ais_156")
     ais_5656 = next(item for item in hotline_contacts("information_security") if item["id"] == "ais_5656")
-    bank_list = ", ".join(f"{bank['name']} {bank['phone']}" for bank in banks[:5])
+    bank_list = ", ".join(contact_label(bank) for bank in banks[:5])
     common = [
         {
             "action": "Dừng trả lời tin nhắn và chụp lại màn hình làm bằng chứng.",
             "say": "Tôi cần giữ nguyên bằng chứng tin nhắn này để ngân hàng hoặc công an kiểm tra.",
         },
         {
-            "action": f"Phản ánh lừa đảo tới {ais_156['name']} {ais_156['phone']} hoặc nhắn LD [nguồn] [nội dung] gửi {ais_5656['phone']}.",
+            "action": f"Phản ánh lừa đảo tới {contact_label(ais_156)} hoặc nhắn LD [nguồn] [nội dung] gửi {ais_5656['phone']}.",
             "say": "Tôi muốn phản ánh một nội dung nghi lừa đảo trực tuyến.",
         },
     ]
@@ -107,7 +115,7 @@ def fallback_rescue_steps(situation: str) -> list[dict[str, str]]:
                 "say": "Tôi vừa chuyển tiền do bị lừa, xin lập yêu cầu tra soát khẩn cấp và hướng dẫn phong tỏa nếu còn kịp.",
             },
             {
-                "action": f"Nếu đang bị đe dọa hoặc mất tiền lớn, gọi {police['name']} {police['phone']} hoặc đến công an gần nhất.",
+                "action": f"Nếu đang bị đe dọa hoặc mất tiền lớn, gọi {contact_label(police)} hoặc đến công an gần nhất.",
                 "say": "Tôi cần trình báo việc bị lừa chuyển tiền và có bằng chứng giao dịch.",
             },
         ]
